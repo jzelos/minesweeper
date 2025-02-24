@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>winexe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeCode>true</AllowUnsafeCode>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Sayers.SDL2.Core" Version="1.0.11" />
+  </ItemGroup>
+
+    <ItemGroup>
+    <Content Include="media/mine.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>
