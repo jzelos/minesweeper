@@ -1,5 +1,3 @@
-using System.Runtime.InteropServices;
-using System.Security.Cryptography.X509Certificates;
 using static SDL2.SDL;
 
 namespace Zelos.Minesweeper;
@@ -80,15 +78,22 @@ public class Grid {
  
     }
 
-     public bool OpenCell(int xWindowCoord, int yWindowCoord) {
-         for (int i=0;i<CellsX;i++)
-            for (int j=0;j<CellsY;j++)
-            { 
-                var cell = grid[i,j]; 
-                if (cell.ContainsMine && !cell.IsVisible)
-                    return false;
-            }
-        return true;
+    public bool OpenCell(IntPtr window, nint xWindowCoord, nint yWindowCoord) {
+            SDL_GetWindowSize(window, out int width, out int height);
+
+            // Cell size includes border
+            var cellWidth = (width / CellsX) - 1;
+            var cellHeight = (height / CellsY) - 1;   
+            
+            var cellX = xWindowCoord / cellWidth;
+            var cellY = yWindowCoord / cellHeight;
+
+            grid[cellX, cellY].IsVisible = true;
+
+            if (grid[cellX, cellY].ContainsMine)
+                return false;
+
+            return true;
     }
     
     public bool IsComplete() {
@@ -105,7 +110,7 @@ public class Grid {
     public void UncoverGrid() {       
         for (int i=0;i<CellsX;i++)
             for (int j=0;j<CellsY;j++)
-                grid[x,y].IsVisible = true;
+                grid[i,j].IsVisible = true;
     }
 
     private static void FillCell(IntPtr renderer, int i, int j, int cellWidth, int cellHeight, byte r, byte g, byte b, byte a) {
@@ -116,7 +121,7 @@ public class Grid {
             y = cellY,
             w = cellWidth,
             h = cellHeight
-            };
+        };
         SDL_SetRenderDrawColor(renderer, r, g, b, a); 
         SDL_RenderFillRect(renderer, ref rect);
     }
