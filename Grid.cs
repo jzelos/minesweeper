@@ -9,6 +9,7 @@ public class Grid {
     private class Cell {
         public bool IsVisible;
         public bool ContainsMine;    
+        public int Number;    
     }
 
     private Cell[,]? grid = null;
@@ -29,7 +30,7 @@ public class Grid {
              }
 
         var rand = new Random();
-        var mines = 30;
+        var mines = 10;
         while (mines > 0) {
             var x = rand.Next(CellsX);
             var y = rand.Next(CellsY);
@@ -72,7 +73,8 @@ public class Grid {
                     }
                      
                 } else {                    
-                    FillCell(renderer, i, j, cellWidth, cellHeight, 100, 100, 100, 255);                   
+                    FillCell(renderer, i, j, cellWidth, cellHeight, 100, 100, 100, 255);   
+                    // TODO draw number
                 }
             }
  
@@ -93,7 +95,45 @@ public class Grid {
             if (grid[cellX, cellY].ContainsMine)
                 return false;
 
+            CheckSurroundingCells(cellX, cellY);
+
             return true;
+    }
+
+    private void CheckSurroundingCells(nint cellX, nint cellY) {
+
+        nint lowerX = cellX > 0 ? cellX -1 : cellX;
+        nint upperX = cellX < (CellsX-1) ? cellX + 1 : cellX;
+
+        nint lowerY = cellY > 0 ? cellY -1 : cellY;
+        nint upperY = cellY < (CellsY-1) ? cellY + 1 : cellY;
+
+        for(nint x = lowerX;x<=upperX;x++) {
+            for(nint y = lowerY;y<=upperY;y++) {
+                if (grid[x, y].ContainsMine || grid[x, y].IsVisible || DoesCellHaveAMineAroundIt(cellX, cellY)) 
+                    continue;
+                grid[x, y].IsVisible = true;  
+                CheckSurroundingCells(x, y);                                                
+            }
+        }     
+    }
+
+    private bool DoesCellHaveAMineAroundIt(nint cellX, nint cellY) {
+
+        nint lowerX = cellX > 0 ? cellX -1 : cellX;
+        nint upperX = cellX < (CellsX-1) ? cellX + 1 : cellX;
+
+        nint lowerY = cellY > 0 ? cellY -1 : cellY;
+        nint upperY = cellY < (CellsY-1) ? cellY + 1 : cellY;
+
+        for(nint x = lowerX;x<=upperX;x++) {
+            for(nint y = lowerY;y<=upperY;y++) {
+                if (grid[x, y].ContainsMine)
+                    return true;
+            }
+        }
+
+        return false;      
     }
     
     public bool IsComplete() {
