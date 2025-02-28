@@ -1,5 +1,6 @@
 using static SDL2.SDL;
 using static SDL2.SDL_image;
+using static SDL2.SDL_ttf;
 
 namespace Zelos.Minesweeper;
 
@@ -56,6 +57,12 @@ class Game
         if (IMG_Init(IMG_InitFlags.IMG_INIT_PNG) == 0)
         {
             Console.WriteLine($"There was an issue initilizing SDL2_Image {IMG_GetError()}");
+        }
+
+        // Initialise true type fonts
+        if (TTF_Init() < 0)
+        {
+            Console.WriteLine($"There was an issue initilizing SDL2_Image {IMG_GetError()}");        
         }
         
         // Create a new window given a title, size, and passes it a flag indicating it should be shown.
@@ -147,6 +154,7 @@ class Game
     /// </summary>
     private void CleanUp() {        
         // Clean up the resources that were created.
+        TTF_Quit();
         SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(window);
         media.FreeMedia();
