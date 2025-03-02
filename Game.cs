@@ -114,6 +114,10 @@ class Game
     private void ProcessMouseEvent(SDL_MouseButtonEvent e) {        
         mouse.ProcessButtonEvent(e);      
 
+        if (mouse.ButtonState[3] == 1) {
+            grid.MarkCell(window, mouse.X, mouse.Y);
+        }
+
         if (mouse.ButtonState[1] == 1) {
             if (!grid.OpenCell(window, mouse.X, mouse.Y))
             {

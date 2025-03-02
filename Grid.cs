@@ -1,3 +1,4 @@
+using System.Collections;
 using static SDL2.SDL;
 
 namespace Zelos.Minesweeper;
@@ -9,7 +10,7 @@ public class Grid {
     private class Cell {
         public bool IsVisible;
         public bool ContainsMine;    
-        public int Number;    
+        public int Marker;    
     }
 
     private Cell[,]? grid = null;
@@ -73,14 +74,31 @@ public class Grid {
                     }
                      
                 } else {                    
-                    FillCell(renderer, i, j, cellWidth, cellHeight, 100, 100, 100, 255);   
-                    // TODO draw number
+                    FillCell(renderer, i, j, cellWidth, cellHeight, 100, 100, 100, 255);                     
+                    DrawMarker(renderer, i, j, cellWidth, cellHeight, cell.Marker);
                 }
             }
  
     }
 
-    public bool OpenCell(IntPtr window, nint xWindowCoord, nint yWindowCoord) {
+    public void MarkCell(IntPtr window, int xWindowCoord, int yWindowCoord) {
+            SDL_GetWindowSize(window, out int width, out int height);
+
+            // Cell size includes border
+            var cellWidth = (width / CellsX) - 1;
+            var cellHeight = (height / CellsY) - 1;   
+            
+            var cellX = xWindowCoord / cellWidth;
+            var cellY = yWindowCoord / cellHeight;
+
+            var cell = grid[cellX, cellY];
+            if (cell.Marker == 2)
+                cell.Marker = 0;
+            else
+                cell.Marker++;            
+    }
+
+    public bool OpenCell(IntPtr window, int xWindowCoord, int yWindowCoord) {
             SDL_GetWindowSize(window, out int width, out int height);
 
             // Cell size includes border
@@ -100,34 +118,35 @@ public class Grid {
             return true;
     }
 
-    private void CheckSurroundingCells(nint cellX, nint cellY) {
+    private void CheckSurroundingCells(int cellX, int cellY) {
 
-        nint lowerX = cellX > 0 ? cellX -1 : cellX;
-        nint upperX = cellX < (CellsX-1) ? cellX + 1 : cellX;
+        int lowerX = cellX > 0 ? cellX -1 : cellX;
+        int upperX = cellX < (CellsX-1) ? cellX + 1 : cellX;
 
-        nint lowerY = cellY > 0 ? cellY -1 : cellY;
-        nint upperY = cellY < (CellsY-1) ? cellY + 1 : cellY;
+        int lowerY = cellY > 0 ? cellY -1 : cellY;
+        int upperY = cellY < (CellsY-1) ? cellY + 1 : cellY;
 
-        for(nint x = lowerX;x<=upperX;x++) {
-            for(nint y = lowerY;y<=upperY;y++) {
-                if (grid[x, y].ContainsMine || grid[x, y].IsVisible || DoesCellHaveAMineAroundIt(cellX, cellY)) 
+        for(int x = lowerX;x<=upperX;x++) {
+            for(int y = lowerY;y<=upperY;y++) {
+                var cell = grid[x, y];
+                if (cell.ContainsMine || cell.IsVisible || DoesCellHaveAMineAroundIt(x, y)) 
                     continue;
-                grid[x, y].IsVisible = true;  
+                cell.IsVisible = true;  
                 CheckSurroundingCells(x, y);                                                
             }
         }     
     }
 
-    private bool DoesCellHaveAMineAroundIt(nint cellX, nint cellY) {
+    private bool DoesCellHaveAMineAroundIt(int cellX, int cellY) {
 
-        nint lowerX = cellX > 0 ? cellX -1 : cellX;
-        nint upperX = cellX < (CellsX-1) ? cellX + 1 : cellX;
+        int lowerX = cellX > 0 ? cellX -1 : cellX;
+        int upperX = cellX < (CellsX-1) ? cellX + 1 : cellX;
 
-        nint lowerY = cellY > 0 ? cellY -1 : cellY;
-        nint upperY = cellY < (CellsY-1) ? cellY + 1 : cellY;
+        int lowerY = cellY > 0 ? cellY -1 : cellY;
+        int upperY = cellY < (CellsY-1) ? cellY + 1 : cellY;
 
-        for(nint x = lowerX;x<=upperX;x++) {
-            for(nint y = lowerY;y<=upperY;y++) {
+        for(int x = lowerX;x<=upperX;x++) {
+            for(int y = lowerY;y<=upperY;y++) {
                 if (grid[x, y].ContainsMine)
                     return true;
             }
@@ -170,5 +189,23 @@ public class Grid {
         var cellX = 1 + (i * (cellWidth+1));
         var cellY = 1 + (j * (cellHeight+1));
         media.Draw(resourceName, renderer, cellX, cellY, cellWidth, cellHeight);
+    }
+
+     private void DrawMarker(IntPtr renderer, int i, int j, int cellWidth, int cellHeight, int marker) {
+
+        if (marker == 0)
+            return;
+
+        var cellX = 1 + (i * (cellWidth+1)) + cellWidth /2;
+        var cellY = 1 + (j * (cellHeight+1)) + cellHeight /2;
+
+        switch (marker) {
+            case 1:   
+                media.DrawTextCentered("?", renderer, cellX, cellY, 0, 0, 0);             
+                break;
+            case 2:
+                media.DrawTextCentered("*", renderer, cellX, cellY, 0, 0, 0);
+                break;                                 
+        }        
     }
 }

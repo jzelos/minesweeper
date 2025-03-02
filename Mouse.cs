@@ -7,8 +7,8 @@ class Mouse
 
     public const byte MaxButtons = 8;
 
-    public nint X {get; private set;}
-    public nint Y {get; private set;}
+    public int X {get; private set;}
+    public int Y {get; private set;}
 
     public byte[] ButtonState {get; private set;} = new byte[MaxButtons]; 
 
