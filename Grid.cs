@@ -43,19 +43,16 @@ public class Grid {
         }
     }
 
-    public void Draw(IntPtr window, IntPtr renderer) {
-
-        SDL_GetWindowSize(window, out int width, out int height);
+    public void Draw(
+        IntPtr window, 
+        IntPtr renderer,
+        int x,
+        int y, 
+        int width, 
+        int height) {
 
         // Draw background (will show through as border)
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);        
-        var background_rect = new SDL_Rect {
-            x = 0,
-            y = 0,
-            w = width,
-            h = height
-            };
-        SDL_RenderFillRect(renderer, ref background_rect);
+        media.Rectangle(renderer, x, y, width, height, Colour.Black);
 
         // get cell size allowing for a 1 pixel border
         var cellWidth = ((width - 1) / CellsX) - 1;
@@ -65,17 +62,21 @@ public class Grid {
         for (int i=0;i<CellsX;i++)
             for (int j=0;j<CellsY;j++)
             {
-                var cell = grid[i,j];                
+                var cell = grid[i,j];   
+                
+                var cellX = x + 1 + (i * (cellWidth+1));
+                var cellY = y + 1 + (j * (cellHeight+1));
+
                 if (cell.IsVisible) {                    
-                    if (cell.ContainsMine) {
-                        DrawImage(renderer, i, j, cellWidth, cellHeight, Resources.TEXTURE_MINE);
+                    if (cell.ContainsMine) {                        
+                        media.Draw(Resources.TEXTURE_MINE, renderer, cellX, cellY, cellWidth, cellHeight);
                     } else {
-                        FillCell(renderer, i, j, cellWidth, cellHeight, 188, 188, 188, 255);
+                        media.Rectangle(renderer, cellX, cellY, cellWidth, cellHeight, Colour.LightGrey);                        
                     }
                      
                 } else {                    
-                    FillCell(renderer, i, j, cellWidth, cellHeight, 100, 100, 100, 255);                     
-                    DrawMarker(renderer, i, j, cellWidth, cellHeight, cell.Marker);
+                    media.Rectangle(renderer, cellX, cellY, cellWidth, cellHeight, Colour.DarkGrey);                     
+                    DrawMarker(renderer, x, y, i, j, cellWidth, cellHeight, cell.Marker);
                 }
             }
  
@@ -172,39 +173,20 @@ public class Grid {
                 grid[i,j].IsVisible = true;
     }
 
-    private static void FillCell(IntPtr renderer, int i, int j, int cellWidth, int cellHeight, byte r, byte g, byte b, byte a) {
-        var cellX = 1 + (i * (cellWidth+1));
-        var cellY = 1 + (j * (cellHeight+1));
-        var rect = new SDL_Rect {
-            x = cellX,
-            y = cellY,
-            w = cellWidth,
-            h = cellHeight
-        };
-        SDL_SetRenderDrawColor(renderer, r, g, b, a); 
-        SDL_RenderFillRect(renderer, ref rect);
-    }
-
-    private void DrawImage(IntPtr renderer, int i, int j, int cellWidth, int cellHeight, string resourceName) {
-        var cellX = 1 + (i * (cellWidth+1));
-        var cellY = 1 + (j * (cellHeight+1));
-        media.Draw(resourceName, renderer, cellX, cellY, cellWidth, cellHeight);
-    }
-
-     private void DrawMarker(IntPtr renderer, int i, int j, int cellWidth, int cellHeight, int marker) {
+    private void DrawMarker(IntPtr renderer, int x, int y, int i, int j, int cellWidth, int cellHeight, int marker) {
 
         if (marker == 0)
             return;
 
-        var cellX = 1 + (i * (cellWidth+1)) + cellWidth /2;
-        var cellY = 1 + (j * (cellHeight+1)) + cellHeight /2;
+        var cellX = x+1 + (i * (cellWidth+1)) + cellWidth /2;
+        var cellY = y+1 + (j * (cellHeight+1)) + cellHeight /2;
 
         switch (marker) {
             case 1:   
-                media.DrawTextCentered("?", renderer, cellX, cellY, 0, 0, 0);             
+                media.DrawTextCentered("?", renderer, cellX, cellY, Colour.Black);             
                 break;
             case 2:
-                media.DrawTextCentered("*", renderer, cellX, cellY, 0, 0, 0);
+                media.DrawTextCentered("*", renderer, cellX, cellY, Colour.Black);
                 break;                                 
         }        
     }

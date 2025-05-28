@@ -7,7 +7,8 @@ namespace Zelos.Minesweeper;
     public enum GameMode {
         Menu,
         Game,
-        GameOver
+        GameOverWin,
+        GameOverLose
     }
 
 class Game
@@ -122,12 +123,12 @@ class Game
             if (!grid.OpenCell(window, mouse.X, mouse.Y))
             {
                 grid.UncoverGrid();
-                // Show you lose
+                mode = GameMode.GameOverLose;
             }
         }
 
         if (grid.IsComplete()) {
-            // Show you win
+            mode = GameMode.GameOverWin;
         }
     }
 
@@ -136,6 +137,8 @@ class Game
     /// </summary>
     private void Render()
     {
+        SDL_GetWindowSize(window, out int width, out int height);
+
          // Clears the current render surface.
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
@@ -143,9 +146,10 @@ class Game
         // Draw        
         switch (mode) {
             case GameMode.Menu:
-            case GameMode.GameOver:                                
+            case GameMode.GameOverWin:                                
+            case GameMode.GameOverLose:                                
             case GameMode.Game:
-                grid.Draw(window, renderer);
+                grid.Draw(window, renderer, 0, 0, width, height);
                 break;
         }
         

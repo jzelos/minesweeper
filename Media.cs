@@ -14,6 +14,23 @@ public class Media
     private IntPtr glyphs;
     private SDL_Rect[] glyphMap = [];
 
+    public void Rectangle(IntPtr renderer, int x, int y, int width, int height, Colour colour) {
+        if (SDL_SetRenderDrawColor(renderer, colour.R, colour.B, colour.G, colour.A)<0) {
+             Console.WriteLine($"There was an issue setting the colour. {SDL_GetError()}");
+        }
+
+        var background_rect = new SDL_Rect {
+            x = x,
+            y = y,
+            w = width,
+            h = height
+        };
+
+        if (SDL_RenderFillRect(renderer, ref background_rect)<0) {
+             Console.WriteLine($"There was an issue rendering the rectangle. {SDL_GetError()}");
+        } 
+    }
+
     public void LoadMedia(IntPtr renderer) {
         LoadTexures(renderer);
         LoadFonts(renderer);
@@ -45,9 +62,9 @@ public class Media
         };                
     }
 
-    public void DrawText(string text, IntPtr renderer, int x, int y, byte r, byte g, byte b)
+    public void DrawText(string text, IntPtr renderer, int x, int y, Colour colour)
     {            
-        if (SDL_SetTextureColorMod(glyphs, r, g, b)<0) {
+        if (SDL_SetTextureColorMod(glyphs, colour.R, colour.G, colour.B)<0) {
             Console.WriteLine($"There was an issue setting the font atlas colour for drawing. {SDL_GetError()}"); 
         }   
 
@@ -70,7 +87,7 @@ public class Media
         }
     }
 
-    public void DrawTextCentered(string text, IntPtr renderer, int x, int y, byte r, byte g, byte b)
+    public void DrawTextCentered(string text, IntPtr renderer, int x, int y, Colour colour)
     {            
         int width = 0;
         int height = 0;
@@ -83,7 +100,7 @@ public class Media
 
         x-=width/2;
         y-=height/2;
-        DrawText(text, renderer, x, y, r, g, b);
+        DrawText(text, renderer, x, y, colour);
     }
 
     private static IntPtr LoadTexure(string path, IntPtr renderer) {
@@ -109,6 +126,7 @@ public class Media
         foreach(var image in images)
             textures.Add(Path.GetFileNameWithoutExtension(image), LoadTexure(image, renderer));
     }
+
     private void FreeTextures() {        
           foreach(var texture in textures.Values)
             SDL_DestroyTexture(texture);
