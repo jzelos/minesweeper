@@ -85,7 +85,7 @@ class Game
         media.LoadMedia(renderer);
 
         // TODO move to menu        
-        grid.Initalize();
+        grid.Initalize(10,10);
         mode = GameMode.Game;
     }
 
@@ -122,7 +122,7 @@ class Game
         if (mouse.ButtonState[1] == 1) {
             if (!grid.OpenCell(window, mouse.X, mouse.Y))
             {
-                grid.UncoverGrid();
+                grid.Uncover();
                 mode = GameMode.GameOverLose;
             }
         }

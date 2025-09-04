@@ -15,6 +15,9 @@ public struct Colour {
 
     public static Colour White = new Colour(255, 255, 255, 255);
     public static Colour Black = new Colour(0, 0, 0, 255);
+    public static Colour Green = new Colour(0, 255, 0, 255);
+    public static Colour Blue = new Colour(0, 0, 255, 255);
+    public static Colour Red = new Colour(255, 0, 0, 255);
 
     public static Colour LightGrey = new Colour(100, 100, 100, 255);
     public static Colour DarkGrey = new Colour(150, 150, 150, 255);

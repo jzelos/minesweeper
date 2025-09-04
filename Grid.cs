@@ -1,193 +1,283 @@
-using System.Collections;
 using static SDL2.SDL;
 
 namespace Zelos.Minesweeper;
 
-public class Grid {
+public class Grid
+{
 
     private Media media;
 
-    private class Cell {
+
+    private class Cell
+    {
         public bool IsVisible;
-        public bool ContainsMine;    
-        public int Marker;    
+        public bool ContainsMine;
+        public bool Marker;
+        public int SurroundingMines;
+
     }
 
     private Cell[,]? grid = null;
 
-    private const int CellsX = 10;
-    private const int CellsY = 10;
+    private int Rows;
+    private int Columns;
 
-    public Grid(Media media) {
+    public Grid(Media media)
+    {
         this.media = media;
     }
 
-    public void Initalize() {
-        grid = new Cell[CellsX, CellsY];
-          for (int i=0;i<CellsX;i++)
-            for (int j=0;j<CellsY;j++)
-             {
-                grid[i,j] = new Cell();                
-             }
+    public void Initalize(int cellsX, int cellsY)
+    {
+        Rows = cellsX;
+        Columns = cellsY;
 
+        // Create an empty grid
+        grid = new Cell[Rows, Columns];
+        for (int i = 0; i < Rows; i++)
+            for (int j = 0; j < Columns; j++)
+                grid[i, j] = new Cell();
+
+        // Set some mines up
         var rand = new Random();
-        var mines = 10;
-        while (mines > 0) {
-            var x = rand.Next(CellsX);
-            var y = rand.Next(CellsY);
-            var cell = grid[x,y]; 
-            if (!cell.ContainsMine) {
+        var mines = Rows * Columns / 5;
+        while (mines > 0)
+        {
+            var x = rand.Next(Rows);
+            var y = rand.Next(Columns);
+            var cell = grid[x, y];
+            if (!cell.ContainsMine)
+            {
                 cell.ContainsMine = true;
                 mines--;
             }
         }
+
+        // Precount the number of mines around each cell
+        for (int i = 0; i < Rows; i++)
+            for (int j = 0; j < Columns; j++)
+                grid[i, j].SurroundingMines = CountSurroundingMines(i, j);
     }
 
+    /// <summary>
+    /// Draw the grid with all markers and counters
+    /// </summary>
+    /// <param name="window"></param>
+    /// <param name="renderer"></param>
+    /// <param name="x"></param>
+    /// <param name="y"></param>
+    /// <param name="width"></param>
+    /// <param name="height"></param>
     public void Draw(
-        IntPtr window, 
+        IntPtr window,
         IntPtr renderer,
         int x,
-        int y, 
-        int width, 
-        int height) {
+        int y,
+        int width,
+        int height)
+    {
 
         // Draw background (will show through as border)
         media.Rectangle(renderer, x, y, width, height, Colour.Black);
 
         // get cell size allowing for a 1 pixel border
-        var cellWidth = ((width - 1) / CellsX) - 1;
-        var cellHeight = ((height - 1) / CellsY) - 1;   
+        var cellWidth = ((width - 1) / Rows) - 1;
+        var cellHeight = ((height - 1) / Columns) - 1;
 
-         // Draw Cells
-        for (int i=0;i<CellsX;i++)
-            for (int j=0;j<CellsY;j++)
+        // Draw Cells
+        for (int i = 0; i < Rows; i++)
+            for (int j = 0; j < Columns; j++)
             {
-                var cell = grid[i,j];   
-                
-                var cellX = x + 1 + (i * (cellWidth+1));
-                var cellY = y + 1 + (j * (cellHeight+1));
+                var cell = grid[i, j];
 
-                if (cell.IsVisible) {                    
-                    if (cell.ContainsMine) {                        
+                var cellX = x + 1 + (i * (cellWidth + 1));
+                var cellY = y + 1 + (j * (cellHeight + 1));
+
+                if (cell.IsVisible)
+                {
+                    if (cell.ContainsMine)
+                    {
                         media.Draw(Resources.TEXTURE_MINE, renderer, cellX, cellY, cellWidth, cellHeight);
-                    } else {
-                        media.Rectangle(renderer, cellX, cellY, cellWidth, cellHeight, Colour.LightGrey);                        
                     }
-                     
-                } else {                    
-                    media.Rectangle(renderer, cellX, cellY, cellWidth, cellHeight, Colour.DarkGrey);                     
-                    DrawMarker(renderer, x, y, i, j, cellWidth, cellHeight, cell.Marker);
+                    else
+                    {
+                        media.Rectangle(renderer, cellX, cellY, cellWidth, cellHeight, Colour.LightGrey);
+                        DrawSurroundingMinesCounts(renderer, x, y, i, j, cellWidth, cellHeight, cell.SurroundingMines);
+                    }
+
+                }
+                else
+                {
+                    media.Rectangle(renderer, cellX, cellY, cellWidth, cellHeight, Colour.DarkGrey);
+                    if (cell.Marker)
+                        DrawMarker(renderer, x, y, i, j, cellWidth, cellHeight);
                 }
             }
- 
+
     }
 
-    public void MarkCell(IntPtr window, int xWindowCoord, int yWindowCoord) {
-            SDL_GetWindowSize(window, out int width, out int height);
-
-            // Cell size includes border
-            var cellWidth = (width / CellsX) - 1;
-            var cellHeight = (height / CellsY) - 1;   
-            
-            var cellX = xWindowCoord / cellWidth;
-            var cellY = yWindowCoord / cellHeight;
-
-            var cell = grid[cellX, cellY];
-            if (cell.Marker == 2)
-                cell.Marker = 0;
-            else
-                cell.Marker++;            
+    /// <summary>
+    /// Toggle the marker on a cell using coordinates
+    /// </summary>
+    /// <param name="window"></param>
+    /// <param name="xWindowCoord"></param>
+    /// <param name="yWindowCoord"></param>
+    public void MarkCell(IntPtr window, int xWindowCoord, int yWindowCoord)
+    {
+        var cell = GetCellFromCoordinates(window, xWindowCoord, yWindowCoord);
+        if (cell.Marker)
+            cell.Marker = false;
+        else
+            cell.Marker = true;
     }
 
-    public bool OpenCell(IntPtr window, int xWindowCoord, int yWindowCoord) {
-            SDL_GetWindowSize(window, out int width, out int height);
+    /// <summary>
+    /// Open a cell and its surrounding (as long as its not a mine)
+    /// </summary>
+    /// <param name="window"></param>
+    /// <param name="xWindowCoord"></param>
+    /// <param name="yWindowCoord"></param>
+    /// <returns></returns>
+    public bool OpenCell(IntPtr window, int xWindowCoord, int yWindowCoord)
+    {
+        var (x, y) = GetCellIndexFromCoordinates(window, xWindowCoord, yWindowCoord);
 
-            // Cell size includes border
-            var cellWidth = (width / CellsX) - 1;
-            var cellHeight = (height / CellsY) - 1;   
-            
-            var cellX = xWindowCoord / cellWidth;
-            var cellY = yWindowCoord / cellHeight;
+        var cell = grid[x, y];
+        cell.IsVisible = true;
 
-            grid[cellX, cellY].IsVisible = true;
+        if (cell.ContainsMine)
+            return false;
 
-            if (grid[cellX, cellY].ContainsMine)
-                return false;
+        OpenSurroundingCells(x, y);
 
-            CheckSurroundingCells(cellX, cellY);
-
-            return true;
+        return true;
     }
 
-    private void CheckSurroundingCells(int cellX, int cellY) {
-
-        int lowerX = cellX > 0 ? cellX -1 : cellX;
-        int upperX = cellX < (CellsX-1) ? cellX + 1 : cellX;
-
-        int lowerY = cellY > 0 ? cellY -1 : cellY;
-        int upperY = cellY < (CellsY-1) ? cellY + 1 : cellY;
-
-        for(int x = lowerX;x<=upperX;x++) {
-            for(int y = lowerY;y<=upperY;y++) {
-                var cell = grid[x, y];
-                if (cell.ContainsMine || cell.IsVisible || DoesCellHaveAMineAroundIt(x, y)) 
-                    continue;
-                cell.IsVisible = true;  
-                CheckSurroundingCells(x, y);                                                
-            }
-        }     
-    }
-
-    private bool DoesCellHaveAMineAroundIt(int cellX, int cellY) {
-
-        int lowerX = cellX > 0 ? cellX -1 : cellX;
-        int upperX = cellX < (CellsX-1) ? cellX + 1 : cellX;
-
-        int lowerY = cellY > 0 ? cellY -1 : cellY;
-        int upperY = cellY < (CellsY-1) ? cellY + 1 : cellY;
-
-        for(int x = lowerX;x<=upperX;x++) {
-            for(int y = lowerY;y<=upperY;y++) {
-                if (grid[x, y].ContainsMine)
-                    return true;
-            }
-        }
-
-        return false;      
-    }
-    
-    public bool IsComplete() {
-         for (int i=0;i<CellsX;i++)
-            for (int j=0;j<CellsY;j++)
-            { 
-                var cell = grid[i,j]; 
-                if (cell.ContainsMine && !cell.IsVisible)
+    /// <summary>
+    /// Returns true when all cells have been opened except those containing a mine
+    /// </summary>
+    /// <returns></returns>
+    public bool IsComplete()
+    {
+        for (int i = 0; i < Rows; i++)
+            for (int j = 0; j < Columns; j++)
+            {
+                var cell = grid[i, j];
+                if (!cell.ContainsMine && !cell.IsVisible)
                     return false;
             }
         return true;
     }
 
-    public void UncoverGrid() {       
-        for (int i=0;i<CellsX;i++)
-            for (int j=0;j<CellsY;j++)
-                grid[i,j].IsVisible = true;
+    /// <summary>
+    /// Make the whole grid visible
+    /// </summary>
+    public void Uncover()
+    {
+        for (int i = 0; i < Rows; i++)
+            for (int j = 0; j < Columns; j++)
+                grid[i, j].IsVisible = true;
     }
 
-    private void DrawMarker(IntPtr renderer, int x, int y, int i, int j, int cellWidth, int cellHeight, int marker) {
-
-        if (marker == 0)
+    private void DrawSurroundingMinesCounts(IntPtr renderer, int x, int y, int i, int j, int cellWidth, int cellHeight, int mines)
+    {
+        if (mines == 0)
             return;
 
-        var cellX = x+1 + (i * (cellWidth+1)) + cellWidth /2;
-        var cellY = y+1 + (j * (cellHeight+1)) + cellHeight /2;
-
-        switch (marker) {
-            case 1:   
-                media.DrawTextCentered("?", renderer, cellX, cellY, Colour.Black);             
+        Colour colour;
+        switch (mines)
+        {
+            case 1:
+                colour = Colour.Black;
                 break;
             case 2:
-                media.DrawTextCentered("*", renderer, cellX, cellY, Colour.Black);
-                break;                                 
-        }        
+                colour = Colour.Blue;
+                break;
+            case 3:
+                colour = Colour.Green;
+                break;
+            default:
+                colour = Colour.Red;
+                break;
+        }
+
+        var cellX = x + 1 + (i * (cellWidth + 1)) + cellWidth / 2;
+        var cellY = y + 1 + (j * (cellHeight + 1)) + cellHeight / 2;
+        media.DrawTextCentered(mines.ToString(), renderer, cellX, cellY, colour);
     }
+
+    private void DrawMarker(IntPtr renderer, int x, int y, int i, int j, int cellWidth, int cellHeight)
+    {
+        var cellX = x + 1 + (i * (cellWidth + 1)) + cellWidth / 2;
+        var cellY = y + 1 + (j * (cellHeight + 1)) + cellHeight / 2;
+        media.DrawTextCentered("*", renderer, cellX, cellY, Colour.Red);
+    }
+
+    private (int x, int y) GetCellIndexFromCoordinates(IntPtr window, int xWindowCoord, int yWindowCoord)
+    {
+        SDL_GetWindowSize(window, out int width, out int height);
+
+        // Cell size includes border
+        var cellWidth = (width / Rows) - 1;
+        var cellHeight = (height / Columns) - 1;
+
+        var cellX = xWindowCoord / cellWidth;
+        var cellY = yWindowCoord / cellHeight;
+
+        return (cellX, cellY);
+    }
+
+    private Cell GetCellFromCoordinates(IntPtr window, int xWindowCoord, int yWindowCoord)
+    {
+        var (x, y) = GetCellIndexFromCoordinates(window, xWindowCoord, yWindowCoord);
+        return grid[x, y];
+    }
+
+    private void OpenSurroundingCells(int cellX, int cellY)
+    {
+
+        var (lowerX, lowerY, upperX, upperY) = GetSurroundingCellBounds(cellX, cellY);
+
+        for (int x = lowerX; x <= upperX; x++)
+        {
+            for (int y = lowerY; y <= upperY; y++)
+            {
+                var cell = grid[x, y];
+                if (cell.IsVisible || cell.ContainsMine)
+                    continue;
+                cell.IsVisible = true;
+                if (cell.SurroundingMines == 0)
+                    OpenSurroundingCells(x, y);
+            }
+        }
+    }
+
+    private int CountSurroundingMines(int cellX, int cellY)
+    {
+        var (lowerX, lowerY, upperX, upperY) = GetSurroundingCellBounds(cellX, cellY);
+
+        int count = 0;
+        for (int x = lowerX; x <= upperX; x++)
+        {
+            for (int y = lowerY; y <= upperY; y++)
+            {
+                if (grid[x, y].ContainsMine)
+                    count++;
+            }
+        }
+
+        return count;
+    }
+
+    private (int, int, int, int) GetSurroundingCellBounds(int cellX, int cellY)
+    {
+        int lowerX = cellX > 0 ? cellX - 1 : cellX;
+        int upperX = cellX < (Rows - 1) ? cellX + 1 : cellX;
+
+        int lowerY = cellY > 0 ? cellY - 1 : cellY;
+        int upperY = cellY < (Columns - 1) ? cellY + 1 : cellY;
+
+        return (lowerX, lowerY, upperX, upperY);
+    }
+    
 }
