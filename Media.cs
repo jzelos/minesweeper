@@ -13,6 +13,9 @@ public class Media
 
     private IntPtr glyphs;
     private SDL_Rect[] glyphMap = [];
+    
+    private IntPtr glyphsLarge;
+    private SDL_Rect[] glyphMapLarge = [];
 
     public void Rectangle(IntPtr renderer, int x, int y, int width, int height, Colour colour) {
         if (SDL_SetRenderDrawColor(renderer, colour.R, colour.B, colour.G, colour.A)<0) {
@@ -93,14 +96,39 @@ public class Media
         int height = 0;
         foreach(var c in text.ToCharArray())
         {
-            var glyph = glyphMap[c];            
+            var glyph = glyphMapLarge[c];            
             width += glyph.w;
             height = glyph.h > height ? glyph.h : height;
         }
 
         x-=width/2;
         y-=height/2;
-        DrawText(text, renderer, x, y, colour);
+        DrawTextLarge(text, renderer, x, y, colour);
+    }
+
+    public void DrawTextLarge(string text, IntPtr renderer, int x, int y, Colour colour)
+    {            
+        if (SDL_SetTextureColorMod(glyphsLarge, colour.R, colour.G, colour.B)<0) {
+            Console.WriteLine($"There was an issue setting the font atlas colour for drawing. {SDL_GetError()}"); 
+        }   
+
+        foreach(var c in text.ToCharArray())
+        {
+            var glyph = glyphMapLarge[c];
+
+            var dest = new SDL_Rect {
+                x = x,
+                y = y,
+                w = glyph.w,
+                h = glyph.h
+            };
+
+            if (SDL_RenderCopy(renderer, glyphsLarge, ref glyph, ref dest) < 0) {
+                Console.WriteLine($"There was an issue rendering a glyph. {SDL_GetError()}");
+            }
+
+            x += glyph.w;        
+        }
     }
 
     private static IntPtr LoadTexure(string path, IntPtr renderer) {
@@ -132,11 +160,21 @@ public class Media
             SDL_DestroyTexture(texture);
 
             SDL_DestroyTexture(glyphs);
+            SDL_DestroyTexture(glyphsLarge);
     }
 
     private void LoadFonts(IntPtr renderer) {
 
+        // Load small font for menus (14pt)
         glyphMap = new SDL_Rect[128];
+        glyphs = LoadFontAtlas(renderer, 14, glyphMap);
+        
+        // Load large font for grid numbers (16pt)
+        glyphMapLarge = new SDL_Rect[128];
+        glyphsLarge = LoadFontAtlas(renderer, 16, glyphMapLarge);
+    }
+
+    private IntPtr LoadFontAtlas(IntPtr renderer, int fontSize, SDL_Rect[] targetGlyphMap) {
 
         var white = new SDL_Color {
             r = 255,
@@ -147,7 +185,10 @@ public class Media
         
         var dest_rect = new SDL_Rect();
 
-        var font = TTF_OpenFont(@"media\roboto-regular.ttf", 15);
+        var font = TTF_OpenFont(@"media\roboto-regular.ttf", fontSize);
+        
+        // Enable font hinting for better rendering
+        TTF_SetFontHinting(font, 1); // TTF_HINTING_NORMAL
 
         // Surface to hold all glyphAtlas with transparent background
         var surfacePtr = SDL_CreateRGBSurface(0, FONT_TEXTURE_SIZE, FONT_TEXTURE_SIZE, 32, 0, 0, 0, 0xff);
@@ -184,7 +225,7 @@ public class Media
             if (SDL_BlitSurface(glyph, IntPtr.Zero, surfacePtr, ref dest_rect) < 0) {
                 Console.WriteLine($"There was an issue blitting the glyph to the glyph map. {SDL_GetError()}");
             }               
-            glyphMap[i] = new SDL_Rect {
+            targetGlyphMap[i] = new SDL_Rect {
                 x = dest_rect.x,
                 y = dest_rect.y,
                 w = dest_rect.w,
@@ -194,14 +235,16 @@ public class Media
             dest_rect.x += dest_rect.w;
         }      
 
-        glyphs = SDL_CreateTextureFromSurface(renderer, surfacePtr);
+        var glyphTexture = SDL_CreateTextureFromSurface(renderer, surfacePtr);
         
         // Enable linear filtering for smoother text rendering
-        SDL_SetTextureScaleMode(glyphs, SDL_ScaleMode.SDL_ScaleModeLinear);
+        SDL_SetTextureScaleMode(glyphTexture, SDL_ScaleMode.SDL_ScaleModeLinear);
         
         // Set blend mode for proper alpha blending
-        SDL_SetTextureBlendMode(glyphs, SDL_BlendMode.SDL_BLENDMODE_BLEND);
+        SDL_SetTextureBlendMode(glyphTexture, SDL_BlendMode.SDL_BLENDMODE_BLEND);
         
         SDL_FreeSurface(surfacePtr);
+        
+        return glyphTexture;
     }
 }

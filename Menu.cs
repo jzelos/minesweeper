@@ -108,7 +108,7 @@ public class MenuBar {
                 }
 
                 // Draw text - adjusted vertical position
-                media.DrawText(subItem.Text, renderer, x + 10, itemY + 2, Colour.Black);
+                media.DrawText(subItem.Text, renderer, x + 10, itemY + 3, Colour.Black);
                 itemY += SUBMENU_ITEM_HEIGHT;
             }
         }
