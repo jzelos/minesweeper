@@ -2,14 +2,14 @@ namespace Zelos.Minesweeper;
 
 public struct Colour {
     public byte R { get; init; }
-    public byte B { get; init; }
     public byte G { get; init; }
+    public byte B { get; init; }
     public byte A { get; init; }
 
-    public Colour(byte r, byte b, byte g, byte a) {
+    public Colour(byte r, byte g, byte b, byte a) {
         R = r;
-        B = b;
         G = g;
+        B = b;
         A = a;
     }
 
@@ -17,20 +17,20 @@ public struct Colour {
     public static Colour Black = new Colour(0, 0, 0, 255);
     public static Colour Green = new Colour(0, 255, 0, 255);
     public static Colour Blue = new Colour(0, 0, 255, 255);
-    public static Colour Red = new Colour(255, 0, 0, 255);    
+    public static Colour Red = new Colour(255, 0, 0, 255);
     public static Colour LightGrey = new Colour(220, 220, 220, 255);
     public static Colour Gray = new Colour(128, 128, 128, 255);
     public static Colour DarkGrey = new Colour(180, 180, 180, 255);
     
     // Classic Minesweeper number colors
-    public static Colour Number1 = new Colour(0, 255, 0, 255);     // Blue
-    public static Colour Number2 = new Colour(0, 128, 0, 255);     // Green
-    public static Colour Number3 = new Colour(255, 0, 0, 255);     // Red
-    public static Colour Number4 = new Colour(0, 0, 128, 255);     // Dark Blue
-    public static Colour Number5 = new Colour(128, 0, 0, 255);     // Dark Red
-    public static Colour Number6 = new Colour(128, 128, 0, 255);   // Cyan
-    public static Colour Number7 = new Colour(0, 0, 0, 255);       // Black
-    public static Colour Number8 = new Colour(128, 128, 128, 255); // Gray
+    public static Colour Number1 = new Colour(0, 0, 255, 255);      // Blue
+    public static Colour Number2 = new Colour(0, 128, 0, 255);      // Green
+    public static Colour Number3 = new Colour(255, 0, 0, 255);      // Red
+    public static Colour Number4 = new Colour(0, 0, 128, 255);      // Dark Blue
+    public static Colour Number5 = new Colour(128, 0, 0, 255);      // Dark Red
+    public static Colour Number6 = new Colour(0, 128, 128, 255);    // Cyan
+    public static Colour Number7 = new Colour(0, 0, 0, 255);        // Black
+    public static Colour Number8 = new Colour(128, 128, 128, 255);  // Gray
     
     // Cell colors
     public static Colour CellUnopened = new Colour(192, 192, 192, 255);  // Silver

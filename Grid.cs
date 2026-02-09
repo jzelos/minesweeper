@@ -2,6 +2,13 @@ using static SDL2.SDL;
 
 namespace Zelos.Minesweeper;
 
+public enum MarkerType
+{
+    None,
+    Flag,
+    Question
+}
+
 public class Grid
 {
 
@@ -12,7 +19,7 @@ public class Grid
     {
         public bool IsVisible;
         public bool ContainsMine;
-        public bool Marker;
+        public MarkerType Marker;
         public int SurroundingMines;
         public bool WasClickedMine; // Track which mine was clicked
 
@@ -128,8 +135,11 @@ public class Grid
                     
                     media.Rectangle(renderer, cellX, cellY, cellWidth, cellHeight, cellColor);
                     Draw3DBorder(renderer, cellX, cellY, cellWidth, cellHeight, true);
-                    if (cell.Marker)
-                        DrawMarker(renderer, x, y, i, j, cellWidth, cellHeight);
+                    
+                    if (cell.Marker == MarkerType.Flag)
+                        DrawMarker(renderer, x, y, i, j, cellWidth, cellHeight, "F", Colour.Red);
+                    else if (cell.Marker == MarkerType.Question)
+                        DrawMarker(renderer, x, y, i, j, cellWidth, cellHeight, "?", Colour.Blue);
                 }
             }
 
@@ -145,14 +155,18 @@ public class Grid
     {
         var cell = GetCellFromCoordinates(window, xWindowCoord, yWindowCoord);
         
-        // Don't allow flagging opened cells
+        // Don't allow marking opened cells
         if (cell.IsVisible)
             return;
             
-        if (cell.Marker)
-            cell.Marker = false;
-        else
-            cell.Marker = true;
+        // Cycle through marker states: None -> Flag -> Question -> None
+        cell.Marker = cell.Marker switch
+        {
+            MarkerType.None => MarkerType.Flag,
+            MarkerType.Flag => MarkerType.Question,
+            MarkerType.Question => MarkerType.None,
+            _ => MarkerType.None
+        };
     }
 
     public void UpdateHover(IntPtr window, int xWindowCoord, int yWindowCoord)
@@ -192,8 +206,8 @@ public class Grid
 
         var cell = grid[x, y];
         
-        // Don't open if already visible or flagged
-        if (cell.IsVisible || cell.Marker)
+        // Don't open if already visible or flagged (question marks can be opened)
+        if (cell.IsVisible || cell.Marker == MarkerType.Flag)
             return true;
             
         cell.IsVisible = true;
@@ -249,7 +263,7 @@ public class Grid
         
         for (int i = 0; i < Rows; i++)
             for (int j = 0; j < Columns; j++)
-                if (grid[i, j].Marker)
+                if (grid[i, j].Marker == MarkerType.Flag)
                     count++;
         return count;
     }
@@ -282,11 +296,11 @@ public class Grid
         media.DrawTextCentered(mines.ToString(), renderer, cellX, cellY, colour);
     }
 
-    private void DrawMarker(IntPtr renderer, int x, int y, int i, int j, int cellWidth, int cellHeight)
+    private void DrawMarker(IntPtr renderer, int x, int y, int i, int j, int cellWidth, int cellHeight, string symbol, Colour color)
     {
         var cellX = x + 1 + (i * (cellWidth + 1)) + cellWidth / 2;
         var cellY = y + 1 + (j * (cellHeight + 1)) + cellHeight / 2;
-        media.DrawTextCentered("F", renderer, cellX, cellY, Colour.Red);
+        media.DrawTextCentered(symbol, renderer, cellX, cellY, color);
     }
 
     private void Draw3DBorder(IntPtr renderer, int x, int y, int width, int height, bool raised)

@@ -18,7 +18,7 @@ public class Media
     private SDL_Rect[] glyphMapLarge = [];
 
     public void Rectangle(IntPtr renderer, int x, int y, int width, int height, Colour colour) {
-        if (SDL_SetRenderDrawColor(renderer, colour.R, colour.B, colour.G, colour.A)<0) {
+        if (SDL_SetRenderDrawColor(renderer, colour.R, colour.G, colour.B, colour.A)<0) {
              Console.WriteLine($"There was an issue setting the colour. {SDL_GetError()}");
         }
 
