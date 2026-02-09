@@ -157,6 +157,11 @@ class Game
 
     private void ProcessMouseMoveEvent(SDL_MouseMotionEvent e) {
         menuBar.HandleMouseMove(e.x, e.y);
+        
+        // Update grid hover if menu is not open
+        if (!menuBar.IsMenuOpen()) {
+            grid.UpdateHover(window, e.x, e.y);
+        }
     }
 
 

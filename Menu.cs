@@ -47,7 +47,7 @@ public class MenuBar {
 
     public void DrawBar(IntPtr window, IntPtr renderer, int windowWidth) {
         // Draw menu bar background
-        media.Rectangle(renderer, 0, 0, windowWidth, MENU_HEIGHT, Colour.LightGrey);
+        media.Rectangle(renderer, 0, 0, windowWidth, MENU_HEIGHT, Colour.MenuBar);
 
         int x = 5;
         for (int i = 0; i < items.Count; i++) {
@@ -57,7 +57,7 @@ public class MenuBar {
 
             // Highlight if hovered or open
             if (i == hoveredIndex || i == openMenuIndex) {
-                media.Rectangle(renderer, x, 0, itemWidth, MENU_HEIGHT, Colour.DarkGrey);
+                media.Rectangle(renderer, x, 0, itemWidth, MENU_HEIGHT, Colour.MenuHighlight);
             }
 
             // Draw text - adjusted vertical position for better centering
@@ -83,8 +83,11 @@ public class MenuBar {
     private void DrawSubmenu(IntPtr renderer, MenuItem parentItem, int x, int y) {
         int height = CalculateSubmenuHeight(parentItem);
         
+        // Draw drop shadow
+        media.Rectangle(renderer, x + 3, y + 3, SUBMENU_WIDTH, height, Colour.MenuShadow);
+        
         // Draw submenu background
-        media.Rectangle(renderer, x, y, SUBMENU_WIDTH, height, Colour.LightGrey);
+        media.Rectangle(renderer, x, y, SUBMENU_WIDTH, height, Colour.MenuBar);
         
         // Draw border
         DrawBorder(renderer, x, y, SUBMENU_WIDTH, height);
@@ -101,7 +104,7 @@ public class MenuBar {
             } else {
                 // Highlight if hovered
                 if (i == hoveredSubItemIndex) {
-                    media.Rectangle(renderer, x + 1, itemY + 1, SUBMENU_WIDTH - 2, SUBMENU_ITEM_HEIGHT - 2, Colour.DarkGrey);
+                    media.Rectangle(renderer, x + 1, itemY + 1, SUBMENU_WIDTH - 2, SUBMENU_ITEM_HEIGHT - 2, Colour.MenuHighlight);
                 }
 
                 // Draw text - adjusted vertical position

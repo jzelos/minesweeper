@@ -29,6 +29,10 @@ public class Grid
     private int lastDrawY;
     private int lastDrawWidth;
     private int lastDrawHeight;
+    
+    // Hover tracking
+    private int? hoveredCellX;
+    private int? hoveredCellY;
 
     public Grid(Media media)
     {
@@ -73,7 +77,7 @@ public class Grid
         lastDrawHeight = height;
 
         // Draw background (will show through as border)
-        media.Rectangle(renderer, x, y, width, height, Colour.Black);
+        media.Rectangle(renderer, x, y, width, height, Colour.Gray);
 
         // get cell size allowing for a 1 pixel border
         var cellWidth = ((width - 1) / Rows) - 1;
@@ -92,18 +96,24 @@ public class Grid
                 {
                     if (cell.ContainsMine)
                     {
+                        media.Rectangle(renderer, cellX, cellY, cellWidth, cellHeight, Colour.CellOpened);
                         media.Draw(Resources.TEXTURE_MINE, renderer, cellX, cellY, cellWidth, cellHeight);
                     }
                     else
                     {
-                        media.Rectangle(renderer, cellX, cellY, cellWidth, cellHeight, Colour.LightGrey);
+                        media.Rectangle(renderer, cellX, cellY, cellWidth, cellHeight, Colour.CellOpened);
                         DrawSurroundingMinesCounts(renderer, x, y, i, j, cellWidth, cellHeight, cell.SurroundingMines);
                     }
 
                 }
                 else
                 {
-                    media.Rectangle(renderer, cellX, cellY, cellWidth, cellHeight, Colour.DarkGrey);
+                    // Check if this cell is hovered
+                    bool isHovered = hoveredCellX == i && hoveredCellY == j;
+                    Colour cellColor = isHovered ? Colour.CellHover : Colour.CellUnopened;
+                    
+                    media.Rectangle(renderer, cellX, cellY, cellWidth, cellHeight, cellColor);
+                    Draw3DBorder(renderer, cellX, cellY, cellWidth, cellHeight, true);
                     if (cell.Marker)
                         DrawMarker(renderer, x, y, i, j, cellWidth, cellHeight);
                 }
@@ -124,6 +134,23 @@ public class Grid
             cell.Marker = false;
         else
             cell.Marker = true;
+    }
+
+    public void UpdateHover(IntPtr window, int xWindowCoord, int yWindowCoord)
+    {
+        // Only update hover for valid coordinates within grid bounds
+        if (xWindowCoord >= lastDrawX && xWindowCoord < lastDrawX + lastDrawWidth &&
+            yWindowCoord >= lastDrawY && yWindowCoord < lastDrawY + lastDrawHeight)
+        {
+            var (x, y) = GetCellIndexFromCoordinates(window, xWindowCoord, yWindowCoord);
+            hoveredCellX = x;
+            hoveredCellY = y;
+        }
+        else
+        {
+            hoveredCellX = null;
+            hoveredCellY = null;
+        }
     }
 
     /// <summary>
@@ -188,22 +215,18 @@ public class Grid
         if (mines == 0)
             return;
 
-        Colour colour;
-        switch (mines)
+        Colour colour = mines switch
         {
-            case 1:
-                colour = Colour.Black;
-                break;
-            case 2:
-                colour = Colour.Blue;
-                break;
-            case 3:
-                colour = Colour.Green;
-                break;
-            default:
-                colour = Colour.Red;
-                break;
-        }
+            1 => Colour.Number1,
+            2 => Colour.Number2,
+            3 => Colour.Number3,
+            4 => Colour.Number4,
+            5 => Colour.Number5,
+            6 => Colour.Number6,
+            7 => Colour.Number7,
+            8 => Colour.Number8,
+            _ => Colour.Black
+        };
 
         var cellX = x + 1 + (i * (cellWidth + 1)) + cellWidth / 2;
         var cellY = y + 1 + (j * (cellHeight + 1)) + cellHeight / 2;
@@ -214,7 +237,27 @@ public class Grid
     {
         var cellX = x + 1 + (i * (cellWidth + 1)) + cellWidth / 2;
         var cellY = y + 1 + (j * (cellHeight + 1)) + cellHeight / 2;
-        media.DrawTextCentered("*", renderer, cellX, cellY, Colour.Red);
+        media.DrawTextCentered("F", renderer, cellX, cellY, Colour.Red);
+    }
+
+    private void Draw3DBorder(IntPtr renderer, int x, int y, int width, int height, bool raised)
+    {
+        if (raised)
+        {
+            // Top and left borders (light)
+            media.Rectangle(renderer, x, y, width, 2, Colour.BorderLight);
+            media.Rectangle(renderer, x, y, 2, height, Colour.BorderLight);
+            
+            // Bottom and right borders (dark)
+            media.Rectangle(renderer, x, y + height - 2, width, 2, Colour.BorderDark);
+            media.Rectangle(renderer, x + width - 2, y, 2, height, Colour.BorderDark);
+        }
+        else
+        {
+            // Inverted for sunken look
+            media.Rectangle(renderer, x, y, width, 1, Colour.BorderDark);
+            media.Rectangle(renderer, x, y, 1, height, Colour.BorderDark);
+        }
     }
 
     private (int x, int y) GetCellIndexFromCoordinates(IntPtr window, int xWindowCoord, int yWindowCoord)
