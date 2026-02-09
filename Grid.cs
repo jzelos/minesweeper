@@ -25,7 +25,7 @@ public class Grid
 
     }
 
-    private Cell[,]? grid = null;
+    private Cell[,] grid;
 
     private int Rows;
     private int Columns;
@@ -45,6 +45,9 @@ public class Grid
     public Grid(Media media)
     {
         this.media = media;
+        // Initialize with a 1x1 grid to avoid null
+        grid = new Cell[1, 1];
+        grid[0, 0] = new Cell();
     }
 
     public void Initalize(int cellsX, int cellsY)
@@ -61,14 +64,15 @@ public class Grid
                 grid[i, j] = new Cell();
     }
 
-    public void UncoverWithClickedMine(int clickedX, int clickedY)
+    /// <summary>
+    /// Uncovers all cells when game is lost (WasClickedMine is already set by OpenCell)
+    /// </summary>
+    public void UncoverWithClickedMine()
     {
         for (int i = 0; i < Rows; i++)
             for (int j = 0; j < Columns; j++)
             {
                 grid[i, j].IsVisible = true;
-                if (i == clickedX && j == clickedY && grid[i, j].ContainsMine)
-                    grid[i, j].WasClickedMine = true;
             }
     }
 
@@ -154,6 +158,7 @@ public class Grid
     public void MarkCell(IntPtr window, int xWindowCoord, int yWindowCoord)
     {
         var cell = GetCellFromCoordinates(window, xWindowCoord, yWindowCoord);
+        if (cell == null) return;
         
         // Don't allow marking opened cells
         if (cell.IsVisible)
@@ -348,9 +353,14 @@ public class Grid
         return (cellX, cellY);
     }
 
-    private Cell GetCellFromCoordinates(IntPtr window, int xWindowCoord, int yWindowCoord)
+    private Cell? GetCellFromCoordinates(IntPtr window, int xWindowCoord, int yWindowCoord)
     {
         var (x, y) = GetCellIndexFromCoordinates(window, xWindowCoord, yWindowCoord);
+        
+        // Validate indices
+        if (x < 0 || x >= Rows || y < 0 || y >= Columns)
+            return null;
+            
         return grid[x, y];
     }
 
@@ -387,7 +397,6 @@ public class Grid
 
     private void OpenSurroundingCells(int cellX, int cellY)
     {
-
         var (lowerX, lowerY, upperX, upperY) = GetSurroundingCellBounds(cellX, cellY);
 
         for (int x = lowerX; x <= upperX; x++)

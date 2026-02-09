@@ -217,7 +217,7 @@ class Game
             if (mouse.ButtonState[1] == 1) {
                 if (!grid.OpenCell(window, mouse.X, mouse.Y))
                 {
-                    grid.Uncover();
+                    grid.UncoverWithClickedMine();
                     infoBar.StopTimer();
                     mode = GameMode.GameOverLose;
                 }
