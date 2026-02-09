@@ -21,6 +21,8 @@ public class Grid
 
     private int Rows;
     private int Columns;
+    private int mineCount;
+    private bool minesPlaced = false;
     
     // Store last drawing dimensions for coordinate conversion
     private int lastDrawX;
@@ -37,32 +39,14 @@ public class Grid
     {
         Rows = cellsX;
         Columns = cellsY;
+        mineCount = Rows * Columns / 5;
+        minesPlaced = false;
 
-        // Create an empty grid
+        // Create an empty grid (mines will be placed on first click)
         grid = new Cell[Rows, Columns];
         for (int i = 0; i < Rows; i++)
             for (int j = 0; j < Columns; j++)
                 grid[i, j] = new Cell();
-
-        // Set some mines up
-        var rand = new Random();
-        var mines = Rows * Columns / 5;
-        while (mines > 0)
-        {
-            var x = rand.Next(Rows);
-            var y = rand.Next(Columns);
-            var cell = grid[x, y];
-            if (!cell.ContainsMine)
-            {
-                cell.ContainsMine = true;
-                mines--;
-            }
-        }
-
-        // Precount the number of mines around each cell
-        for (int i = 0; i < Rows; i++)
-            for (int j = 0; j < Columns; j++)
-                grid[i, j].SurroundingMines = CountSurroundingMines(i, j);
     }
 
     /// <summary>
@@ -153,13 +137,22 @@ public class Grid
     {
         var (x, y) = GetCellIndexFromCoordinates(window, xWindowCoord, yWindowCoord);
 
+        // Place mines on first click, ensuring clicked cell and neighbors are safe
+        if (!minesPlaced)
+        {
+            PlaceMines(x, y);
+            minesPlaced = true;
+        }
+
         var cell = grid[x, y];
         cell.IsVisible = true;
 
         if (cell.ContainsMine)
             return false;
 
-        OpenSurroundingCells(x, y);
+        // Only open surrounding cells if the clicked cell is empty
+        if (cell.SurroundingMines == 0)
+            OpenSurroundingCells(x, y);
 
         return true;
     }
@@ -253,6 +246,37 @@ public class Grid
     {
         var (x, y) = GetCellIndexFromCoordinates(window, xWindowCoord, yWindowCoord);
         return grid[x, y];
+    }
+
+    private void PlaceMines(int safeCellX, int safeCellY)
+    {
+        var rand = new Random();
+        var mines = mineCount;
+        
+        // Get bounds of safe zone (clicked cell and its neighbors)
+        var (lowerX, lowerY, upperX, upperY) = GetSurroundingCellBounds(safeCellX, safeCellY);
+
+        while (mines > 0)
+        {
+            var x = rand.Next(Rows);
+            var y = rand.Next(Columns);
+            var cell = grid[x, y];
+            
+            // Skip if already has mine or is in safe zone
+            if (cell.ContainsMine)
+                continue;
+                
+            if (x >= lowerX && x <= upperX && y >= lowerY && y <= upperY)
+                continue;
+            
+            cell.ContainsMine = true;
+            mines--;
+        }
+
+        // Calculate surrounding mines for all cells
+        for (int i = 0; i < Rows; i++)
+            for (int j = 0; j < Columns; j++)
+                grid[i, j].SurroundingMines = CountSurroundingMines(i, j);
     }
 
     private void OpenSurroundingCells(int cellX, int cellY)
