@@ -17,17 +17,23 @@ class Game
     private IntPtr window;
     private IntPtr renderer;    
     private GameMode mode;
+    
+    // Track current game settings for restart
+    private int currentRows = 10;
+    private int currentColumns = 10;
 
     private readonly Media media;
     private readonly Grid grid;
     private readonly Mouse mouse;
     private readonly MenuBar menuBar;
+    private readonly InfoBar infoBar;
 
     public Game() {
         media = new Media();
         mouse = new Mouse();
         grid = new Grid(media);
         menuBar = new MenuBar(media);
+        infoBar = new InfoBar(media);
     }
 
     public void Start () 
@@ -88,9 +94,20 @@ class Game
         media.LoadMedia(renderer);
 
         InitializeMenuBar();
+        
+        // Set restart callback for smiley button
+        infoBar.SetRestartCallback(RestartGame);
 
         // TODO move to menu        
-        grid.Initalize(10,10);
+        grid.Initalize(currentRows, currentColumns);
+        infoBar.StartGame(grid.GetTotalMines());
+        mode = GameMode.Game;
+    }
+
+    private void RestartGame()
+    {
+        grid.Initalize(currentRows, currentColumns);
+        infoBar.StartGame(grid.GetTotalMines());
         mode = GameMode.Game;
     }
 
@@ -98,15 +115,24 @@ class Game
         // Game menu
         var gameMenu = new MenuItem("Game");
         gameMenu.SubItems.Add(new MenuItem("New Game - Easy", () => {
-            grid.Initalize(9, 9);
+            currentRows = 9;
+            currentColumns = 9;
+            grid.Initalize(currentRows, currentColumns);
+            infoBar.StartGame(grid.GetTotalMines());
             mode = GameMode.Game;
         }));
         gameMenu.SubItems.Add(new MenuItem("New Game - Medium", () => {
-            grid.Initalize(16, 16);
+            currentRows = 16;
+            currentColumns = 16;
+            grid.Initalize(currentRows, currentColumns);
+            infoBar.StartGame(grid.GetTotalMines());
             mode = GameMode.Game;
         }));
         gameMenu.SubItems.Add(new MenuItem("New Game - Hard", () => {
-            grid.Initalize(30, 16);
+            currentRows = 30;
+            currentColumns = 16;
+            grid.Initalize(currentRows, currentColumns);
+            infoBar.StartGame(grid.GetTotalMines());
             mode = GameMode.Game;
         }));
         gameMenu.SubItems.Add(MenuItem.Separator());
@@ -173,23 +199,32 @@ class Game
             if (menuBar.HandleMouseClick(e.x, e.y)) {
                 return; // Menu handled the click
             }
+            
+            // Handle info bar smiley button click
+            SDL_GetWindowSize(window, out int width, out int height);
+            if (infoBar.HandleClick(e.x, e.y, width, menuBar.GetHeight())) {
+                return; // Info bar handled the click
+            }
         }
 
-        // Only process game clicks if menu is not open
-        if (!menuBar.IsMenuOpen()) {
+        // Only process game clicks if menu is not open AND game is still active
+        if (!menuBar.IsMenuOpen() && mode == GameMode.Game) {
             if (mouse.ButtonState[3] == 1) {
                 grid.MarkCell(window, mouse.X, mouse.Y);
+                infoBar.SetFlagsPlaced(grid.GetFlagCount());
             }
 
             if (mouse.ButtonState[1] == 1) {
                 if (!grid.OpenCell(window, mouse.X, mouse.Y))
                 {
                     grid.Uncover();
+                    infoBar.StopTimer();
                     mode = GameMode.GameOverLose;
                 }
             }
 
             if (grid.IsComplete()) {
+                infoBar.StopTimer();
                 mode = GameMode.GameOverWin;
             }
         }
@@ -208,15 +243,22 @@ class Game
 
         // Draw menu bar (without submenus)
         menuBar.DrawBar(window, renderer, width);
-
-        // Draw game content below menu bar
+        
+        // Draw info bar below menu
         int menuHeight = menuBar.GetHeight();
+        infoBar.UpdateTimer();
+        infoBar.SetFlagsPlaced(grid.GetFlagCount());
+        infoBar.SetGameMode(mode);
+        infoBar.Draw(renderer, width, menuHeight);
+
+        // Draw game content below info bar
+        int topOffset = menuHeight + infoBar.GetHeight();
         switch (mode) {
             case GameMode.Menu:
             case GameMode.GameOverWin:                                
             case GameMode.GameOverLose:                                
             case GameMode.Game:
-                grid.Draw(window, renderer, 0, menuHeight, width, height - menuHeight);
+                grid.Draw(window, renderer, 0, topOffset, width, height - topOffset);
                 break;
         }
 

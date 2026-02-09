@@ -14,6 +14,7 @@ public class Grid
         public bool ContainsMine;
         public bool Marker;
         public int SurroundingMines;
+        public bool WasClickedMine; // Track which mine was clicked
 
     }
 
@@ -51,6 +52,17 @@ public class Grid
         for (int i = 0; i < Rows; i++)
             for (int j = 0; j < Columns; j++)
                 grid[i, j] = new Cell();
+    }
+
+    public void UncoverWithClickedMine(int clickedX, int clickedY)
+    {
+        for (int i = 0; i < Rows; i++)
+            for (int j = 0; j < Columns; j++)
+            {
+                grid[i, j].IsVisible = true;
+                if (i == clickedX && j == clickedY && grid[i, j].ContainsMine)
+                    grid[i, j].WasClickedMine = true;
+            }
     }
 
     /// <summary>
@@ -96,7 +108,9 @@ public class Grid
                 {
                     if (cell.ContainsMine)
                     {
-                        media.Rectangle(renderer, cellX, cellY, cellWidth, cellHeight, Colour.CellOpened);
+                        // Draw red background for clicked mine, normal for others
+                        Colour bgColor = cell.WasClickedMine ? Colour.Red : Colour.CellOpened;
+                        media.Rectangle(renderer, cellX, cellY, cellWidth, cellHeight, bgColor);
                         media.Draw(Resources.TEXTURE_MINE, renderer, cellX, cellY, cellWidth, cellHeight);
                     }
                     else
@@ -130,6 +144,11 @@ public class Grid
     public void MarkCell(IntPtr window, int xWindowCoord, int yWindowCoord)
     {
         var cell = GetCellFromCoordinates(window, xWindowCoord, yWindowCoord);
+        
+        // Don't allow flagging opened cells
+        if (cell.IsVisible)
+            return;
+            
         if (cell.Marker)
             cell.Marker = false;
         else
@@ -172,10 +191,18 @@ public class Grid
         }
 
         var cell = grid[x, y];
+        
+        // Don't open if already visible or flagged
+        if (cell.IsVisible || cell.Marker)
+            return true;
+            
         cell.IsVisible = true;
 
         if (cell.ContainsMine)
+        {
+            cell.WasClickedMine = true;
             return false;
+        }
 
         // Only open surrounding cells if the clicked cell is empty
         if (cell.SurroundingMines == 0)
@@ -208,6 +235,28 @@ public class Grid
         for (int i = 0; i < Rows; i++)
             for (int j = 0; j < Columns; j++)
                 grid[i, j].IsVisible = true;
+    }
+
+    public int GetTotalMines()
+    {
+        return mineCount;
+    }
+
+    public int GetFlagCount()
+    {
+        int count = 0;
+        if (grid == null) return 0;
+        
+        for (int i = 0; i < Rows; i++)
+            for (int j = 0; j < Columns; j++)
+                if (grid[i, j].Marker)
+                    count++;
+        return count;
+    }
+
+    public bool HasStarted()
+    {
+        return minesPlaced;
     }
 
     private void DrawSurroundingMinesCounts(IntPtr renderer, int x, int y, int i, int j, int cellWidth, int cellHeight, int mines)
