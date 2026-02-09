@@ -173,13 +173,11 @@ class Game
         // Only process game clicks if menu is not open
         if (!menuBar.IsMenuOpen()) {
             if (mouse.ButtonState[3] == 1) {
-                // Adjust Y coordinate for menu bar
-                grid.MarkCell(window, mouse.X, mouse.Y - menuBar.GetHeight());
+                grid.MarkCell(window, mouse.X, mouse.Y);
             }
 
             if (mouse.ButtonState[1] == 1) {
-                // Adjust Y coordinate for menu bar
-                if (!grid.OpenCell(window, mouse.X, mouse.Y - menuBar.GetHeight()))
+                if (!grid.OpenCell(window, mouse.X, mouse.Y))
                 {
                     grid.Uncover();
                     mode = GameMode.GameOverLose;

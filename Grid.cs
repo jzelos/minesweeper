@@ -21,6 +21,12 @@ public class Grid
 
     private int Rows;
     private int Columns;
+    
+    // Store last drawing dimensions for coordinate conversion
+    private int lastDrawX;
+    private int lastDrawY;
+    private int lastDrawWidth;
+    private int lastDrawHeight;
 
     public Grid(Media media)
     {
@@ -76,6 +82,11 @@ public class Grid
         int width,
         int height)
     {
+        // Store drawing dimensions for coordinate conversion
+        lastDrawX = x;
+        lastDrawY = y;
+        lastDrawWidth = width;
+        lastDrawHeight = height;
 
         // Draw background (will show through as border)
         media.Rectangle(renderer, x, y, width, height, Colour.Black);
@@ -215,14 +226,25 @@ public class Grid
 
     private (int x, int y) GetCellIndexFromCoordinates(IntPtr window, int xWindowCoord, int yWindowCoord)
     {
-        SDL_GetWindowSize(window, out int width, out int height);
+        // Use the same calculation as Draw method
+        var cellWidth = ((lastDrawWidth - 1) / Rows) - 1;
+        var cellHeight = ((lastDrawHeight - 1) / Columns) - 1;
 
-        // Cell size includes border
-        var cellWidth = (width / Rows) - 1;
-        var cellHeight = (height / Columns) - 1;
+        // Account for grid offset and 1-pixel border
+        var relativeX = xWindowCoord - lastDrawX - 1;
+        var relativeY = yWindowCoord - lastDrawY - 1;
 
-        var cellX = xWindowCoord / cellWidth;
-        var cellY = yWindowCoord / cellHeight;
+        // If click is in border or outside grid, clamp to nearest valid position
+        if (relativeX < 0) relativeX = 0;
+        if (relativeY < 0) relativeY = 0;
+
+        // Calculate cell index accounting for border between cells
+        var cellX = relativeX / (cellWidth + 1);
+        var cellY = relativeY / (cellHeight + 1);
+
+        // Clamp to valid range
+        cellX = Math.Max(0, Math.Min(cellX, Rows - 1));
+        cellY = Math.Max(0, Math.Min(cellY, Columns - 1));
 
         return (cellX, cellY);
     }
