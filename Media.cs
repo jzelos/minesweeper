@@ -147,7 +147,7 @@ public class Media
         
         var dest_rect = new SDL_Rect();
 
-        var font = TTF_OpenFont(@"media\swansea.ttf", 24);
+        var font = TTF_OpenFont(@"media\roboto-regular.ttf", 15);
 
         // Surface to hold all glyphAtlas with transparent background
         var surfacePtr = SDL_CreateRGBSurface(0, FONT_TEXTURE_SIZE, FONT_TEXTURE_SIZE, 32, 0, 0, 0, 0xff);
@@ -194,6 +194,14 @@ public class Media
             dest_rect.x += dest_rect.w;
         }      
 
-        glyphs = SDL_CreateTextureFromSurface(renderer, surfacePtr);             
+        glyphs = SDL_CreateTextureFromSurface(renderer, surfacePtr);
+        
+        // Enable linear filtering for smoother text rendering
+        SDL_SetTextureScaleMode(glyphs, SDL_ScaleMode.SDL_ScaleModeLinear);
+        
+        // Set blend mode for proper alpha blending
+        SDL_SetTextureBlendMode(glyphs, SDL_BlendMode.SDL_BLENDMODE_BLEND);
+        
+        SDL_FreeSurface(surfacePtr);
     }
 }

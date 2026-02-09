@@ -21,11 +21,13 @@ class Game
     private readonly Media media;
     private readonly Grid grid;
     private readonly Mouse mouse;
+    private readonly MenuBar menuBar;
 
     public Game() {
         media = new Media();
         mouse = new Mouse();
         grid = new Grid(media);
+        menuBar = new MenuBar(media);
     }
 
     public void Start () 
@@ -47,6 +49,7 @@ class Game
     private void Setup() {
 
         SDL_SetHint(SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING, "1");
+        SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1"); // Enable linear filtering
 
         // Initilizes SDL.
         if (SDL_Init(SDL_INIT_VIDEO) < 0)
@@ -84,9 +87,47 @@ class Game
 
         media.LoadMedia(renderer);
 
+        InitializeMenuBar();
+
         // TODO move to menu        
         grid.Initalize(10,10);
         mode = GameMode.Game;
+    }
+
+    private void InitializeMenuBar() {
+        // Game menu
+        var gameMenu = new MenuItem("Game");
+        gameMenu.SubItems.Add(new MenuItem("New Game - Easy", () => {
+            grid.Initalize(9, 9);
+            mode = GameMode.Game;
+        }));
+        gameMenu.SubItems.Add(new MenuItem("New Game - Medium", () => {
+            grid.Initalize(16, 16);
+            mode = GameMode.Game;
+        }));
+        gameMenu.SubItems.Add(new MenuItem("New Game - Hard", () => {
+            grid.Initalize(30, 16);
+            mode = GameMode.Game;
+        }));
+        gameMenu.SubItems.Add(MenuItem.Separator());
+        gameMenu.SubItems.Add(new MenuItem("Exit", () => {
+            running = false;
+        }));
+        menuBar.AddMenu(gameMenu);
+
+        // Options menu
+        var optionsMenu = new MenuItem("Options");
+        optionsMenu.SubItems.Add(new MenuItem("Custom Grid...", () => {
+            // TODO: Implement custom grid dialog
+        }));
+        menuBar.AddMenu(optionsMenu);
+
+        // Help menu
+        var helpMenu = new MenuItem("Help");
+        helpMenu.SubItems.Add(new MenuItem("About", () => {
+            // TODO: Show about dialog
+        }));
+        menuBar.AddMenu(helpMenu);
     }
 
     /// <summary>
@@ -103,6 +144,9 @@ class Game
                 case SDL_EventType.SDL_QUIT:
                     running = false;
                     break;
+                case SDL_EventType.SDL_MOUSEMOTION:
+                    ProcessMouseMoveEvent(e.motion);
+                    break;
                 case SDL_EventType.SDL_MOUSEBUTTONDOWN:
                 case SDL_EventType.SDL_MOUSEBUTTONUP:                    
                     ProcessMouseEvent(e.button);                
@@ -111,24 +155,40 @@ class Game
         }        
     }
 
+    private void ProcessMouseMoveEvent(SDL_MouseMotionEvent e) {
+        menuBar.HandleMouseMove(e.x, e.y);
+    }
+
 
     private void ProcessMouseEvent(SDL_MouseButtonEvent e) {        
         mouse.ProcessButtonEvent(e);      
 
-        if (mouse.ButtonState[3] == 1) {
-            grid.MarkCell(window, mouse.X, mouse.Y);
-        }
-
-        if (mouse.ButtonState[1] == 1) {
-            if (!grid.OpenCell(window, mouse.X, mouse.Y))
-            {
-                grid.Uncover();
-                mode = GameMode.GameOverLose;
+        // Handle menu bar clicks first
+        if (e.state == SDL_PRESSED) {
+            if (menuBar.HandleMouseClick(e.x, e.y)) {
+                return; // Menu handled the click
             }
         }
 
-        if (grid.IsComplete()) {
-            mode = GameMode.GameOverWin;
+        // Only process game clicks if menu is not open
+        if (!menuBar.IsMenuOpen()) {
+            if (mouse.ButtonState[3] == 1) {
+                // Adjust Y coordinate for menu bar
+                grid.MarkCell(window, mouse.X, mouse.Y - menuBar.GetHeight());
+            }
+
+            if (mouse.ButtonState[1] == 1) {
+                // Adjust Y coordinate for menu bar
+                if (!grid.OpenCell(window, mouse.X, mouse.Y - menuBar.GetHeight()))
+                {
+                    grid.Uncover();
+                    mode = GameMode.GameOverLose;
+                }
+            }
+
+            if (grid.IsComplete()) {
+                mode = GameMode.GameOverWin;
+            }
         }
     }
 
@@ -143,15 +203,22 @@ class Game
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
 
-        // Draw        
+        // Draw menu bar (without submenus)
+        menuBar.DrawBar(window, renderer, width);
+
+        // Draw game content below menu bar
+        int menuHeight = menuBar.GetHeight();
         switch (mode) {
             case GameMode.Menu:
             case GameMode.GameOverWin:                                
             case GameMode.GameOverLose:                                
             case GameMode.Game:
-                grid.Draw(window, renderer, 0, 0, width, height);
+                grid.Draw(window, renderer, 0, menuHeight, width, height - menuHeight);
                 break;
         }
+
+        // Draw submenus on top of everything
+        menuBar.DrawSubmenus(renderer);
         
         // Switches out the currently presented render surface with the one we just did work on.
         SDL_RenderPresent(renderer);
