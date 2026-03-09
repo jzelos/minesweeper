@@ -96,13 +96,13 @@ public class GameOverlay
         // Title bar
         Colour titleBg = mode switch
         {
-            OverlayMode.Win     => Colour.WinGold,
-            OverlayMode.Lose    => new Colour(180, 40, 40, 255),
-            _                   => Colour.MenuHighlight
+            OverlayMode.Win  => Colour.WinGold,
+            OverlayMode.Lose => new Colour(160, 30, 30, 255),
+            _                => Colour.DialogTitleBg
         };
+        Colour titleText = mode == OverlayMode.Win ? Colour.Black : Colour.White;
         media.Rectangle(renderer, panelX + 2, panelY + 2, PANEL_W - 4, 32, titleBg);
-        media.DrawTextCentered(title, renderer, panelX + PANEL_W / 2, panelY + 18,
-            mode == OverlayMode.Win ? Colour.Black : Colour.White);
+        media.DrawTextCentered(title, renderer, panelX + PANEL_W / 2, panelY + 18, titleText);
 
         int contentY = panelY + 42;
 
@@ -116,12 +116,12 @@ public class GameOverlay
                 if (winIsNewRecord)
                 {
                     media.DrawTextSmallCentered("*** New Best Time! ***", renderer,
-                        panelX + PANEL_W / 2, contentY + 24, Colour.WinGold);
+                        panelX + PANEL_W / 2, contentY + 24, Colour.WinGoldText);
                 }
                 else if (winPreviousBest.HasValue)
                 {
                     media.DrawTextSmallCentered($"Best: {winPreviousBest.Value}s", renderer,
-                        panelX + PANEL_W / 2, contentY + 24, Colour.Gray);
+                        panelX + PANEL_W / 2, contentY + 24, Colour.Black);
                 }
                 break;
 

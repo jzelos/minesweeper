@@ -30,7 +30,7 @@ public struct Colour {
     public static Colour Number5 = new Colour(128, 0, 0, 255);      // Dark Red
     public static Colour Number6 = new Colour(0, 128, 128, 255);    // Cyan
     public static Colour Number7 = new Colour(0, 0, 0, 255);        // Black
-    public static Colour Number8 = new Colour(128, 128, 128, 255);  // Gray
+    public static Colour Number8 = new Colour(75, 75, 75, 255);     // Dark gray — readable on opened cell (184,184,184)
 
     // Cell colors
     public static Colour CellUnopened = new Colour(196, 196, 196, 255);
@@ -42,9 +42,10 @@ public struct Colour {
     public static Colour BorderDark  = new Colour(120, 120, 120, 255);
 
     // Menu colors
-    public static Colour MenuBar       = new Colour(240, 240, 240, 255);
-    public static Colour MenuHighlight = new Colour(198, 210, 240, 255);
-    public static Colour MenuShadow    = new Colour(60, 60, 60, 128);
+    public static Colour MenuBar        = new Colour(240, 240, 240, 255);
+    public static Colour MenuHighlight  = new Colour(198, 210, 240, 255);
+    public static Colour MenuShadow     = new Colour(60, 60, 60, 128);
+    public static Colour DialogTitleBg  = new Colour(47, 85, 151, 255);  // dark blue — pair with White text
 
     // Smiley face
     public static Colour SmileyYellow = new Colour(255, 210, 0, 255);
@@ -60,7 +61,8 @@ public struct Colour {
     public static Colour OverlayPanel = new Colour(240, 240, 240, 255);
 
     // Win / reward accent
-    public static Colour WinGold = new Colour(212, 175, 55, 255);
+    public static Colour WinGold     = new Colour(212, 175, 55, 255);   // gold bg — pair with Black text
+    public static Colour WinGoldText = new Colour(150, 100, 0, 255);    // dark amber — readable on light bg
 
     // Flag graphics
     public static Colour FlagRed  = new Colour(210, 30, 30, 255);
