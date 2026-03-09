@@ -240,7 +240,14 @@ class Game
 
         if (menuBar.IsMenuOpen()) return;
         if (mode != GameMode.Game) return;
-        if (e.state != SDL_PRESSED) return;
+
+        // Reset chord-tracking state on button release
+        if (e.state != SDL_PRESSED)
+        {
+            if (e.button == 1) leftButtonDown  = false;
+            if (e.button == 3) rightButtonDown = false;
+            return;
+        }
 
         // Track individual button downs for chord detection
         if (e.button == 1) leftButtonDown  = true;
