@@ -4,167 +4,193 @@ using static SDL2.SDL_ttf;
 
 namespace Zelos.Minesweeper;
 
-    public enum GameMode {
-        Menu,
-        Game,
-        GameOverWin,
-        GameOverLose
-    }
+public enum GameMode {
+    Menu,
+    Game,
+    GameOverWin,
+    GameOverLose
+}
 
 class Game
 {
-    private bool running = true; 
-    private IntPtr window;
-    private IntPtr renderer;    
+    private bool    running  = true;
+    private IntPtr  window;
+    private IntPtr  renderer;
     private GameMode mode;
-    
-    // Track current game settings for restart
-    private int currentRows = 10;
-    private int currentColumns = 10;
 
-    private readonly Media media;
-    private readonly Grid grid;
-    private readonly Mouse mouse;
-    private readonly MenuBar menuBar;
-    private readonly InfoBar infoBar;
+    // Current difficulty
+    private int    currentRows       = 16;
+    private int    currentColumns    = 16;
+    private int    currentMines      = StandardMines.MEDIUM;
+    private string currentDifficulty = "Medium";
 
-    public Game() {
-        media = new Media();
-        mouse = new Mouse();
-        grid = new Grid(media);
-        menuBar = new MenuBar(media);
-        infoBar = new InfoBar(media);
+    // Mouse chord-click tracking
+    private bool leftButtonDown;
+    private bool rightButtonDown;
+
+    private readonly Media            media;
+    private readonly Grid             grid;
+    private readonly Mouse            mouse;
+    private readonly MenuBar          menuBar;
+    private readonly InfoBar          infoBar;
+    private readonly HighScoreManager highScore;
+    private readonly GameOverlay      overlay;
+
+    public Game()
+    {
+        media     = new Media();
+        mouse     = new Mouse();
+        grid      = new Grid(media);
+        menuBar   = new MenuBar(media);
+        infoBar   = new InfoBar(media);
+        highScore = new HighScoreManager();
+        overlay   = new GameOverlay(media);
     }
 
-    public void Start () 
+    public void Start()
     {
-        Setup();        
-
+        Setup();
         while (running)
         {
             PollEvents();
             Render();
         }
-
         CleanUp();
     }
 
-    /// <summary>
-    /// Setup all of the SDL resources we'll need to display a window.
-    /// </summary>
-    private void Setup() {
+    // ── Initialisation ───────────────────────────────────────────────────────
 
+    private void Setup()
+    {
         SDL_SetHint(SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING, "1");
-        SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1"); // Enable linear filtering
+        SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
 
-        // Initilizes SDL.
         if (SDL_Init(SDL_INIT_VIDEO) < 0)
-        {
-            Console.WriteLine($"There was an issue initilizing SDL. {SDL_GetError()}");
-        }
+            Console.WriteLine($"SDL init error: {SDL_GetError()}");
 
-        // Initilizes SDL_image for use with png files.
         if (IMG_Init(IMG_InitFlags.IMG_INIT_PNG) == 0)
-        {
-            Console.WriteLine($"There was an issue initilizing SDL2_Image {IMG_GetError()}");
-        }
+            Console.WriteLine($"SDL_image init error: {IMG_GetError()}");
 
-        // Initialise true type fonts
         if (TTF_Init() < 0)
-        {
-            Console.WriteLine($"There was an issue initilizing SDL2_Image {IMG_GetError()}");        
-        }
-        
-        // Create a new window given a title, size, and passes it a flag indicating it should be shown.
-        window = SDL_CreateWindow(Resources.WINDOW_TITLE, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 480, SDL_WindowFlags.SDL_WINDOW_SHOWN | SDL_WindowFlags.SDL_WINDOW_RESIZABLE );        
+            Console.WriteLine($"SDL_ttf init error: {TTF_GetError()}");
+
+        window = SDL_CreateWindow(Resources.WINDOW_TITLE,
+            SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+            640, 480,
+            SDL_WindowFlags.SDL_WINDOW_SHOWN | SDL_WindowFlags.SDL_WINDOW_RESIZABLE);
 
         if (window == IntPtr.Zero)
-        {
-            Console.WriteLine($"There was an issue creating the window. {SDL_GetError()}");
-        }
+            Console.WriteLine($"Window creation error: {SDL_GetError()}");
 
-        // Creates a new SDL hardware renderer using the default graphics device with VSYNC enabled.
-        renderer = SDL_CreateRenderer(window, -1, SDL_RendererFlags.SDL_RENDERER_ACCELERATED | SDL_RendererFlags.SDL_RENDERER_PRESENTVSYNC);
+        renderer = SDL_CreateRenderer(window, -1,
+            SDL_RendererFlags.SDL_RENDERER_ACCELERATED |
+            SDL_RendererFlags.SDL_RENDERER_PRESENTVSYNC);
 
         if (renderer == IntPtr.Zero)
-        {
-            Console.WriteLine($"There was an issue creating the renderer. {SDL_GetError()}");
-        }        
+            Console.WriteLine($"Renderer creation error: {SDL_GetError()}");
 
         media.LoadMedia(renderer);
-
         InitializeMenuBar();
-        
-        // Set restart callback for smiley button
         infoBar.SetRestartCallback(RestartGame);
 
-        // TODO move to menu        
-        grid.Initalize(currentRows, currentColumns);
+        StartNewGame(currentRows, currentColumns, currentMines, currentDifficulty);
+    }
+
+    private void StartNewGame(int rows, int cols, int mines, string difficulty)
+    {
+        currentRows       = rows;
+        currentColumns    = cols;
+        currentMines      = mines;
+        currentDifficulty = difficulty;
+
+        grid.Initalize(rows, cols, mines);
         infoBar.StartGame(grid.GetTotalMines());
         mode = GameMode.Game;
+        overlay.Hide();
+        leftButtonDown  = false;
+        rightButtonDown = false;
+
+        ResizeWindowToFit();
     }
 
     private void RestartGame()
     {
-        grid.Initalize(currentRows, currentColumns);
-        infoBar.StartGame(grid.GetTotalMines());
-        mode = GameMode.Game;
+        StartNewGame(currentRows, currentColumns, currentMines, currentDifficulty);
     }
 
-    private void InitializeMenuBar() {
+    private void ResizeWindowToFit()
+    {
+        var (gridW, gridH)  = grid.GetPreferredSize();
+        int windowW = Math.Max(Resources.MIN_WINDOW_WIDTH, gridW);
+        int windowH = menuBar.GetHeight() + infoBar.GetHeight() + gridH;
+        SDL_SetWindowSize(window, windowW, windowH);
+        SDL_SetWindowMinimumSize(window,
+            Math.Min(windowW, Resources.MIN_WINDOW_WIDTH), windowH);
+    }
+
+    private void InitializeMenuBar()
+    {
         // Game menu
         var gameMenu = new MenuItem("Game");
-        gameMenu.SubItems.Add(new MenuItem("New Game - Easy", () => {
-            currentRows = 9;
-            currentColumns = 9;
-            grid.Initalize(currentRows, currentColumns);
-            infoBar.StartGame(grid.GetTotalMines());
-            mode = GameMode.Game;
-        }));
-        gameMenu.SubItems.Add(new MenuItem("New Game - Medium", () => {
-            currentRows = 16;
-            currentColumns = 16;
-            grid.Initalize(currentRows, currentColumns);
-            infoBar.StartGame(grid.GetTotalMines());
-            mode = GameMode.Game;
-        }));
-        gameMenu.SubItems.Add(new MenuItem("New Game - Hard", () => {
-            currentRows = 30;
-            currentColumns = 16;
-            grid.Initalize(currentRows, currentColumns);
-            infoBar.StartGame(grid.GetTotalMines());
-            mode = GameMode.Game;
-        }));
+        gameMenu.SubItems.Add(new MenuItem("New Game - Easy", () =>
+            StartNewGame(9, 9, StandardMines.EASY, "Easy")));
+        gameMenu.SubItems.Add(new MenuItem("New Game - Medium", () =>
+            StartNewGame(16, 16, StandardMines.MEDIUM, "Medium")));
+        gameMenu.SubItems.Add(new MenuItem("New Game - Hard", () =>
+            StartNewGame(30, 16, StandardMines.HARD, "Hard")));
         gameMenu.SubItems.Add(MenuItem.Separator());
-        gameMenu.SubItems.Add(new MenuItem("Exit", () => {
-            running = false;
-        }));
+        gameMenu.SubItems.Add(new MenuItem("Exit", () => running = false));
         menuBar.AddMenu(gameMenu);
 
         // Options menu
         var optionsMenu = new MenuItem("Options");
-        optionsMenu.SubItems.Add(new MenuItem("Custom Grid...", () => {
-            // TODO: Implement custom grid dialog
+        optionsMenu.SubItems.Add(new MenuItem("Custom - Small  (12\u00d710, 20 mines)", () =>
+            StartNewGame(12, 10, 20, "Custom")));
+        optionsMenu.SubItems.Add(new MenuItem("Custom - Large  (24\u00d720, 80 mines)", () =>
+            StartNewGame(24, 20, 80, "Custom")));
+        optionsMenu.SubItems.Add(new MenuItem("Custom - XL     (30\u00d724, 130 mines)", () =>
+            StartNewGame(30, 24, 130, "Custom")));
+        optionsMenu.SubItems.Add(MenuItem.Separator());
+        optionsMenu.SubItems.Add(new MenuItem("View Best Times", () =>
+        {
+            var easy   = highScore.GetBest("Easy");
+            var medium = highScore.GetBest("Medium");
+            var hard   = highScore.GetBest("Hard");
+            overlay.ShowMessage("Best Times", new[]
+            {
+                $"Easy:   {(easy.HasValue   ? easy.Value   + "s" : "--")}",
+                $"Medium: {(medium.HasValue ? medium.Value + "s" : "--")}",
+                $"Hard:   {(hard.HasValue   ? hard.Value   + "s" : "--")}",
+            }, () => { });
         }));
         menuBar.AddMenu(optionsMenu);
 
         // Help menu
         var helpMenu = new MenuItem("Help");
-        helpMenu.SubItems.Add(new MenuItem("About", () => {
-            // TODO: Show about dialog
-        }));
+        helpMenu.SubItems.Add(new MenuItem("How to Play", () =>
+            overlay.ShowMessage("How to Play", new[]
+            {
+                "Left click  - open a cell",
+                "Right click - place / remove a flag",
+                "Middle click or L+R - chord open",
+                "Click smiley to restart",
+            }, () => { })));
+        helpMenu.SubItems.Add(MenuItem.Separator());
+        helpMenu.SubItems.Add(new MenuItem("About", () =>
+            overlay.ShowMessage("About Minesweeper", new[]
+            {
+                "Built with SDL2 + C#",
+                "Version 1.0",
+            }, () => { })));
         menuBar.AddMenu(helpMenu);
     }
 
-    /// <summary>
-    /// Checks to see if there are any events to be processed.
-    /// </summary>
+    // ── Event processing ─────────────────────────────────────────────────────
+
     private void PollEvents()
     {
-        // Check to see if there are any events and continue to do so until the queue is empty.
         while (SDL_PollEvent(out SDL_Event e) == 1)
         {
-            
             switch (e.type)
             {
                 case SDL_EventType.SDL_QUIT:
@@ -174,106 +200,139 @@ class Game
                     ProcessMouseMoveEvent(e.motion);
                     break;
                 case SDL_EventType.SDL_MOUSEBUTTONDOWN:
-                case SDL_EventType.SDL_MOUSEBUTTONUP:                    
-                    ProcessMouseEvent(e.button);                
-                    break; 
+                case SDL_EventType.SDL_MOUSEBUTTONUP:
+                    ProcessMouseEvent(e.button);
+                    break;
             }
-        }        
+        }
     }
 
-    private void ProcessMouseMoveEvent(SDL_MouseMotionEvent e) {
+    private void ProcessMouseMoveEvent(SDL_MouseMotionEvent e)
+    {
+        overlay.UpdateMouse(e.x, e.y);
         menuBar.HandleMouseMove(e.x, e.y);
-        
-        // Update grid hover if menu is not open
-        if (!menuBar.IsMenuOpen()) {
+
+        if (!menuBar.IsMenuOpen() && !overlay.IsVisible)
             grid.UpdateHover(window, e.x, e.y);
-        }
     }
 
+    private void ProcessMouseEvent(SDL_MouseButtonEvent e)
+    {
+        mouse.ProcessButtonEvent(e);
 
-    private void ProcessMouseEvent(SDL_MouseButtonEvent e) {        
-        mouse.ProcessButtonEvent(e);      
-
-        // Handle menu bar clicks first
-        if (e.state == SDL_PRESSED) {
-            if (menuBar.HandleMouseClick(e.x, e.y)) {
-                return; // Menu handled the click
+        if (e.state == SDL_PRESSED)
+        {
+            // Overlay gets first priority
+            if (overlay.IsVisible)
+            {
+                SDL_GetWindowSize(window, out int ww, out int wh);
+                overlay.HandleClick(e.x, e.y, ww, wh, menuBar.GetHeight() + infoBar.GetHeight());
+                return;
             }
-            
-            // Handle info bar smiley button click
+
+            // Menu bar
+            if (menuBar.HandleMouseClick(e.x, e.y)) return;
+
+            // Info bar (smiley button)
             SDL_GetWindowSize(window, out int width, out int height);
-            if (infoBar.HandleClick(e.x, e.y, width, menuBar.GetHeight())) {
-                return; // Info bar handled the click
-            }
+            if (infoBar.HandleClick(e.x, e.y, width, menuBar.GetHeight())) return;
         }
 
-        // Only process game clicks if menu is not open AND game is still active
-        if (!menuBar.IsMenuOpen() && mode == GameMode.Game) {
-            if (mouse.ButtonState[3] == 1) {
-                grid.MarkCell(window, mouse.X, mouse.Y);
-                infoBar.SetFlagsPlaced(grid.GetFlagCount());
-            }
+        if (menuBar.IsMenuOpen()) return;
+        if (mode != GameMode.Game) return;
+        if (e.state != SDL_PRESSED) return;
 
-            if (mouse.ButtonState[1] == 1) {
-                if (!grid.OpenCell(window, mouse.X, mouse.Y))
-                {
-                    grid.UncoverWithClickedMine();
-                    infoBar.StopTimer();
-                    mode = GameMode.GameOverLose;
-                }
-            }
+        // Track individual button downs for chord detection
+        if (e.button == 1) leftButtonDown  = true;
+        if (e.button == 3) rightButtonDown = true;
 
-            if (grid.IsComplete()) {
-                infoBar.StopTimer();
-                mode = GameMode.GameOverWin;
-            }
+        // Chord click: both buttons held simultaneously (or middle click)
+        bool isChord = (leftButtonDown && rightButtonDown) || e.button == 2;
+        if (isChord)
+        {
+            if (!grid.ChordOpen(window, e.x, e.y))
+                TriggerGameOver();
+            else if (grid.IsComplete())
+                TriggerWin();
+
+            leftButtonDown  = false;
+            rightButtonDown = false;
+            return;
+        }
+
+        // Right click – flag / unflag
+        if (e.button == 3)
+        {
+            grid.MarkCell(window, e.x, e.y);
+            infoBar.SetFlagsPlaced(grid.GetFlagCount());
+        }
+
+        // Left click – open cell
+        if (e.button == 1)
+        {
+            if (!grid.OpenCell(window, e.x, e.y))
+                TriggerGameOver();
+            else if (grid.IsComplete())
+                TriggerWin();
         }
     }
 
-    /// <summary>
-    /// Renders to the window.
-    /// </summary>
+    // ── Game-state transitions ────────────────────────────────────────────────
+
+    private void TriggerGameOver()
+    {
+        grid.UncoverWithClickedMine();
+        infoBar.StopTimer();
+        mode = GameMode.GameOverLose;
+        overlay.ShowLose(RestartGame);
+    }
+
+    private void TriggerWin()
+    {
+        grid.FlagRemainingMines();
+        infoBar.SetFlagsPlaced(grid.GetFlagCount());
+        infoBar.StopTimer();
+        mode = GameMode.GameOverWin;
+
+        int elapsed  = infoBar.GetElapsedSeconds();
+        bool isNew   = highScore.CheckAndUpdate(currentDifficulty, elapsed);
+        int? prevBest = isNew ? (int?)null : highScore.GetBest(currentDifficulty);
+        overlay.ShowWin(elapsed, isNew, prevBest, RestartGame);
+    }
+
+    // ── Rendering ────────────────────────────────────────────────────────────
+
     private void Render()
     {
         SDL_GetWindowSize(window, out int width, out int height);
 
-         // Clears the current render surface.
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_SetRenderDrawColor(renderer, 30, 30, 30, 255);
         SDL_RenderClear(renderer);
 
-        // Draw menu bar (without submenus)
         menuBar.DrawBar(window, renderer, width);
-        
-        // Draw info bar below menu
-        int menuHeight = menuBar.GetHeight();
+
+        int menuH = menuBar.GetHeight();
         infoBar.UpdateTimer();
         infoBar.SetFlagsPlaced(grid.GetFlagCount());
         infoBar.SetGameMode(mode);
-        infoBar.Draw(renderer, width, menuHeight);
+        infoBar.Draw(renderer, width, menuH);
 
-        // Draw game content below info bar
-        int topOffset = menuHeight + infoBar.GetHeight();
-        switch (mode) {
-            case GameMode.Menu:
-            case GameMode.GameOverWin:                                
-            case GameMode.GameOverLose:                                
-            case GameMode.Game:
-                grid.Draw(window, renderer, 0, topOffset, width, height - topOffset);
-                break;
-        }
+        int topOffset = menuH + infoBar.GetHeight();
+        grid.Draw(window, renderer, 0, topOffset, width, height - topOffset);
 
-        // Draw submenus on top of everything
+        // Overlay (win / lose / message) sits on top of the grid
+        overlay.Draw(renderer, width, height, topOffset);
+
+        // Submenus render on top of everything
         menuBar.DrawSubmenus(renderer);
-        
-        // Switches out the currently presented render surface with the one we just did work on.
+
         SDL_RenderPresent(renderer);
     }
 
-    /// <summary>
-    /// Clean up the resources that were created.
-    /// </summary>
-    private void CleanUp() {        
-        // Clean up the resources that were created.
+    // ── Cleanup ───────────────────────────────────────────────────────────────
+
+    private void CleanUp()
+    {
         TTF_Quit();
         SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(window);
