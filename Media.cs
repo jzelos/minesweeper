@@ -430,11 +430,11 @@ public class Media
 
     private void LoadFonts(IntPtr renderer) {
 
-        // Load small font for menus (14pt)
+        // Load small font for menus
         glyphMap = new SDL_Rect[128];
         glyphs = LoadFontAtlas(renderer, 14, glyphMap);
         
-        // Load large font for grid numbers (16pt)
+        // Load large font for grid numbers / centred text
         glyphMapLarge = new SDL_Rect[128];
         glyphsLarge = LoadFontAtlas(renderer, 16, glyphMapLarge);
     }
@@ -451,45 +451,44 @@ public class Media
         var dest_rect = new SDL_Rect();
 
         var font = TTF_OpenFont(@"media\roboto-regular.ttf", fontSize);
-        
-        // Enable font hinting for better rendering
-        TTF_SetFontHinting(font, 1); // TTF_HINTING_NORMAL
+        if (font == IntPtr.Zero) {
+            Console.WriteLine($"TTF_OpenFont failed (size {fontSize}): {TTF_GetError()}");
+            return IntPtr.Zero;
+        }
 
-        // Surface to hold all glyphAtlas with transparent background
-        var surfacePtr = SDL_CreateRGBSurface(0, FONT_TEXTURE_SIZE, FONT_TEXTURE_SIZE, 32, 0, 0, 0, 0xff);
-        var surface = System.Runtime.InteropServices.Marshal.PtrToStructure<SDL_Surface>(surfacePtr);
-
-        if (SDL_SetColorKey(surfacePtr, 1, SDL_MapRGBA(surface.format, 0, 0, 0, 0)) < 0) {
-            Console.WriteLine($"There was an issue setting the colour key for the glyph map. {SDL_GetError()}");
-        }        
+        var surfacePtr = SDL_CreateRGBSurface(0, FONT_TEXTURE_SIZE, FONT_TEXTURE_SIZE, 32,
+            0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000); // ARGB8888 — matches TTF_RenderUTF8_Blended output
+        if (surfacePtr == IntPtr.Zero) {
+            Console.WriteLine($"SDL_CreateRGBSurface failed: {SDL_GetError()}");
+            return IntPtr.Zero;
+        }
+        // SDL zero-initialises new surfaces; all pixels start as (0,0,0,0) = fully transparent.
+        // No SDL_SetColorKey needed — proper per-pixel alpha handles transparency.
 
         for (var i = ' ' ; i <= 'z' ; i++) {
 
-            // Render the glyph to a surface            
             var glyph = TTF_RenderUTF8_Blended(font, i.ToString(), white);
+            if (glyph == IntPtr.Zero) continue;
 
-            // Get the size of the glyph            
             if (TTF_SizeText(font, i.ToString(), out dest_rect.w, out dest_rect.h) < 0) {
-                Console.WriteLine($"There was an issue aqquiring the glyph size. {SDL_GetError()}");
+                Console.WriteLine($"TTF_SizeText failed: {SDL_GetError()}");
+                continue;
             }
 
-            // check to see if we need to start a new row because we have hit the max width of the map
-            if (dest_rect.x + dest_rect.w >= FONT_TEXTURE_SIZE)
-            {
+            if (dest_rect.x + dest_rect.w >= FONT_TEXTURE_SIZE) {
                 dest_rect.x = 0;
                 dest_rect.y += dest_rect.h + 1;
-
-                if (dest_rect.y + dest_rect.h >= FONT_TEXTURE_SIZE)
-                {                   
-                    throw new Exception($"The Font texture size is insufficant to hold all the glyphs");
-                }
             }
 
-            // render the glyph to the surface holding the glyph surface and store the coordinates of the glyph
-            // in the atlas            
+            // KEY QUALITY FIX: BLENDMODE_NONE on the glyph surface copies the raw
+            // alpha channel into the atlas instead of compositing it into RGB.
+            // This preserves the full anti-aliasing gradient.
+            SDL_SetSurfaceBlendMode(glyph, SDL_BlendMode.SDL_BLENDMODE_NONE);
+
             if (SDL_BlitSurface(glyph, IntPtr.Zero, surfacePtr, ref dest_rect) < 0) {
-                Console.WriteLine($"There was an issue blitting the glyph to the glyph map. {SDL_GetError()}");
-            }               
+                Console.WriteLine($"SDL_BlitSurface failed: {SDL_GetError()}");
+            }
+
             targetGlyphMap[i] = new SDL_Rect {
                 x = dest_rect.x,
                 y = dest_rect.y,
@@ -498,18 +497,10 @@ public class Media
             };
 
             dest_rect.x += dest_rect.w;
-        }      
+        }
 
         var glyphTexture = SDL_CreateTextureFromSurface(renderer, surfacePtr);
-        
-        // Enable linear filtering for smoother text rendering
-        SDL_SetTextureScaleMode(glyphTexture, SDL_ScaleMode.SDL_ScaleModeLinear);
-        
-        // Set blend mode for proper alpha blending
         SDL_SetTextureBlendMode(glyphTexture, SDL_BlendMode.SDL_BLENDMODE_BLEND);
-        
-        SDL_FreeSurface(surfacePtr);
-        
         return glyphTexture;
     }
 
