@@ -288,7 +288,7 @@ public class Media
         int width = 0, height = 0;
         foreach (char c in text)
         {
-            if (c < 0 || c >= glyphMap.Length) continue;
+            if (c < 0 || c >= glyphMap.Length || glyphMap[c].w == 0) continue;
             var g = glyphMap[c];
             width += g.w;
             if (g.h > height) height = g.h;
@@ -335,6 +335,7 @@ public class Media
 
         foreach(var c in text.ToCharArray())
         {
+            if (c < 0 || c >= glyphMap.Length || glyphMap[c].w == 0) continue;
             var glyph = glyphMap[c];
 
             var dest = new SDL_Rect {
@@ -358,6 +359,7 @@ public class Media
         int height = 0;
         foreach(var c in text.ToCharArray())
         {
+            if (c < 0 || c >= glyphMapLarge.Length || glyphMapLarge[c].w == 0) continue;
             var glyph = glyphMapLarge[c];            
             width += glyph.w;
             height = glyph.h > height ? glyph.h : height;
@@ -376,6 +378,7 @@ public class Media
 
         foreach(var c in text.ToCharArray())
         {
+            if (c < 0 || c >= glyphMapLarge.Length || glyphMapLarge[c].w == 0) continue;
             var glyph = glyphMapLarge[c];
 
             var dest = new SDL_Rect {

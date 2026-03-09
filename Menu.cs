@@ -82,15 +82,16 @@ public class MenuBar {
 
     private void DrawSubmenu(IntPtr renderer, MenuItem parentItem, int x, int y) {
         int height = CalculateSubmenuHeight(parentItem);
+        int width  = CalculateSubmenuWidth(parentItem);
         
         // Draw drop shadow
-        media.Rectangle(renderer, x + 3, y + 3, SUBMENU_WIDTH, height, Colour.MenuShadow);
+        media.Rectangle(renderer, x + 3, y + 3, width, height, Colour.MenuShadow);
         
         // Draw submenu background
-        media.Rectangle(renderer, x, y, SUBMENU_WIDTH, height, Colour.MenuBar);
+        media.Rectangle(renderer, x, y, width, height, Colour.MenuBar);
         
         // Draw border
-        DrawBorder(renderer, x, y, SUBMENU_WIDTH, height);
+        DrawBorder(renderer, x, y, width, height);
 
         int itemY = y;
         for (int i = 0; i < parentItem.SubItems.Count; i++) {
@@ -99,12 +100,12 @@ public class MenuBar {
             if (subItem.IsSeparator) {
                 // Draw separator line
                 itemY += 2;
-                media.Rectangle(renderer, x + 5, itemY, SUBMENU_WIDTH - 10, 1, Colour.Gray);
+                media.Rectangle(renderer, x + 5, itemY, width - 10, 1, Colour.Gray);
                 itemY += 3;
             } else {
                 // Highlight if hovered
                 if (i == hoveredSubItemIndex) {
-                    media.Rectangle(renderer, x + 1, itemY + 1, SUBMENU_WIDTH - 2, SUBMENU_ITEM_HEIGHT - 2, Colour.MenuHighlight);
+                    media.Rectangle(renderer, x + 1, itemY + 1, width - 2, SUBMENU_ITEM_HEIGHT - 2, Colour.MenuHighlight);
                 }
 
                 // Draw text - adjusted vertical position
@@ -137,6 +138,15 @@ public class MenuBar {
         return height;
     }
 
+    private int CalculateSubmenuWidth(MenuItem item) {
+        int maxText = SUBMENU_WIDTH; // never narrower than the default
+        foreach (var subItem in item.SubItems) {
+            if (!subItem.IsSeparator)
+                maxText = Math.Max(maxText, MeasureText(subItem.Text));
+        }
+        return maxText + 20; // 10px padding each side
+    }
+
     private int MeasureText(string text) {
         // Approximate text width (can be improved with actual measurement)
         return text.Length * 10;
@@ -156,8 +166,9 @@ public class MenuBar {
             // Check if mouse is over submenu
             var item = items[openMenuIndex.Value];
             int menuX = GetMenuXPosition(openMenuIndex.Value);
+            int submenuW = CalculateSubmenuWidth(item);
             
-            if (mouseX >= menuX && mouseX < menuX + SUBMENU_WIDTH) {
+            if (mouseX >= menuX && mouseX < menuX + submenuW) {
                 int relativeY = mouseY - MENU_HEIGHT;
                 hoveredSubItemIndex = GetSubmenuIndexAtPosition(item, relativeY);
             } else {
@@ -186,8 +197,9 @@ public class MenuBar {
             // Click on submenu
             var item = items[openMenuIndex.Value];
             int menuX = GetMenuXPosition(openMenuIndex.Value);
+            int submenuW = CalculateSubmenuWidth(item);
             
-            if (mouseX >= menuX && mouseX < menuX + SUBMENU_WIDTH) {
+            if (mouseX >= menuX && mouseX < menuX + submenuW) {
                 int relativeY = mouseY - MENU_HEIGHT;
                 int? clickedSubIndex = GetSubmenuIndexAtPosition(item, relativeY);
                 

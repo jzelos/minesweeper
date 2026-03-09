@@ -186,10 +186,10 @@ public class GameOverlay
     {
         return mode switch
         {
-            OverlayMode.Win  => 160,
-            OverlayMode.Lose => 130,
-            OverlayMode.Message => 80 + lines.Length * 18,
-            _ => 130
+            OverlayMode.Win     => 160,
+            OverlayMode.Lose    => 130,
+            OverlayMode.Message => 110 + lines.Length * 18 + BTN_H + BTN_MARGIN,
+            _                   => 130
         };
     }
 }

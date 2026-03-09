@@ -144,11 +144,11 @@ class Game
 
         // Options menu
         var optionsMenu = new MenuItem("Options");
-        optionsMenu.SubItems.Add(new MenuItem("Custom - Small  (12\u00d710, 20 mines)", () =>
+        optionsMenu.SubItems.Add(new MenuItem("Custom - Small  (12x10, 20 mines)", () =>
             StartNewGame(12, 10, 20, "Custom")));
-        optionsMenu.SubItems.Add(new MenuItem("Custom - Large  (24\u00d720, 80 mines)", () =>
+        optionsMenu.SubItems.Add(new MenuItem("Custom - Large  (24x20, 80 mines)", () =>
             StartNewGame(24, 20, 80, "Custom")));
-        optionsMenu.SubItems.Add(new MenuItem("Custom - XL     (30\u00d724, 130 mines)", () =>
+        optionsMenu.SubItems.Add(new MenuItem("Custom - XL     (30x24, 130 mines)", () =>
             StartNewGame(30, 24, 130, "Custom")));
         optionsMenu.SubItems.Add(MenuItem.Separator());
         optionsMenu.SubItems.Add(new MenuItem("View Best Times", () =>
