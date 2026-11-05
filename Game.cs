@@ -319,6 +319,8 @@ class Game
         menuBar.DrawBar(window, renderer, width);
 
         int menuH = menuBar.GetHeight();
+        if (grid.HasStarted())
+            infoBar.StartTimer();
         infoBar.UpdateTimer();
         infoBar.SetFlagsPlaced(grid.GetFlagCount());
         infoBar.SetGameMode(mode);

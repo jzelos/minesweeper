@@ -14,6 +14,7 @@ public class InfoBar
     private int  flagsPlaced;
     private int  elapsedSeconds;
     private bool timerRunning;
+    private bool timerStarted;
     private uint timerStartTicks;
     private GameMode currentMode;
     private Action? onRestartClick;
@@ -28,9 +29,20 @@ public class InfoBar
         totalMines      = mineCount;
         flagsPlaced     = 0;
         elapsedSeconds  = 0;
+        timerRunning    = false;
+        timerStarted    = false;
+        timerStartTicks = 0;
+        currentMode     = GameMode.Game;
+    }
+
+    /// <summary>Starts the clock on the first actual reveal. Safe to call repeatedly;
+    /// only takes effect once per game, and never re-arms after StopTimer() ends a game.</summary>
+    public void StartTimer()
+    {
+        if (timerStarted) return;
+        timerStarted    = true;
         timerRunning    = true;
         timerStartTicks = SDL_GetTicks();
-        currentMode     = GameMode.Game;
     }
 
     public void SetRestartCallback(Action callback) => onRestartClick = callback;
